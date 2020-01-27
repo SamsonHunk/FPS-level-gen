@@ -9,6 +9,8 @@ public:
 	Base();
 	~Base();
 
+	bool generate();
+
 private:
 
 };

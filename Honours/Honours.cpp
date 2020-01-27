@@ -3,7 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <iostream>
-#include "Room.h"
+#include "Base.h"
 
 //grid dimensions
 int size;
@@ -18,7 +18,8 @@ enum TileType
 //storage for data representation of generated level
 std::vector<short int> area;
 
-std::vector<sf::RectangleShape> rooms; //rectangles to represent the rooms generated before exporting
+//sfml rectangles to visualise the created level
+Base roomTree;
 
 //small function to ease accessing and organising data in the vector
 int index(int x, int y)
@@ -87,6 +88,7 @@ int main()
 		}
 
 		window.clear();
+		window.draw(roomTree);
 		window.display();
 	}
 
@@ -100,7 +102,8 @@ void generate()
 
 	int center = (size / 2);
 
-
+	roomTree.setPosition(sf::Vector2f(center, center));
+	roomTree.generate();
 }
 
 void drawRoom(sf::Vector2f pos, sf::Vector2f size)

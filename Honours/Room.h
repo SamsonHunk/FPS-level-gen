@@ -15,10 +15,13 @@ public:
 		Large
 	};
 
+
+	int childCount;
+
 protected:
 	//a room has size constraints and connects to another amount of rooms
-	sf::Vector2f minSize;
-	sf::Vector2f maxSize;
+	sf::Vector2i minSize;
+	sf::Vector2i maxSize;
 	std::vector<Room> connectedRooms;
 	int maxChildRooms = 4;
 	int minChildRooms = 2;
