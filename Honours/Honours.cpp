@@ -3,7 +3,6 @@
 
 #include <SFML/Graphics.hpp>
 #include <iostream>
-#include "Base.h"
 
 //grid dimensions
 int size;
@@ -18,17 +17,36 @@ enum TileType
 //storage for data representation of generated level
 std::vector<short int> area;
 
+//the structure that contains all the information each room needs when generated
+//the sfml class can also store the position and size of the shape for use in the exporting too
+struct Room
+{
+	int heirarchy;
+	sf::RectangleShape shape;
+	Room* parent = NULL;
+	int sizeConstraint;
+
+	void generate(int minSize, int maxSize, sf::Vector2f pos)
+	{//general generation rules for each room
+		sf::Vector2f size;
+		size.x = rand() % (maxSize - minSize) + minSize;
+		size.y = rand() % (maxSize - minSize) + minSize;
+
+		shape.setSize(size);
+		shape.setPosition(pos);
+
+		sizeConstraint = maxSize;
+	}
+};
+
 //sfml rectangles to visualise the created level
-Base roomTree;
+std::vector<Room> rooms;
 
 //small function to ease accessing and organising data in the vector
 int index(int x, int y)
 {
 	return x + size * y;
 }
-
-int tileMultiplier = 2; //each tile is 2x2 in the image to try and keep scale good
-//a player takes up about 1 space
 
 //function encompassing the level generation
 void generate();
@@ -82,13 +100,18 @@ int main()
 					area[it] = Empty;
 				}
 
+				rooms.clear();
+
 				//make a new one
 				generate();
 			}
 		}
 
 		window.clear();
-		window.draw(roomTree);
+		for (int it = 0; it < rooms.size(); it++)
+		{//draw all the room graphics
+			window.draw(rooms[it].shape);
+		}
 		window.display();
 	}
 
@@ -102,8 +125,130 @@ void generate()
 
 	int center = (size / 2);
 
-	roomTree.setPosition(sf::Vector2f(center, center));
-	roomTree.generate();
+	Room temp;
+	int generationHeriarchy = 6; //current position in the generation loop
+
+	//generate the initial room, no other room in the map can be bigger than this room
+	temp.heirarchy = generationHeriarchy;
+	temp.generate(30, 70, sf::Vector2f(center, center));
+	
+	//center the first room into the center of the screen
+	temp.shape.setPosition(temp.shape.getPosition().x - temp.shape.getSize().x, temp.shape.getPosition().y - temp.shape.getSize().y);
+
+	rooms.push_back(temp);
+
+	//index storage to improve efficiency moving through the vector
+	int roomIndex = 0;
+	
+	std::cout << "Done!" << std::endl;
+
+	do
+	{//generate the rooms in a flower pattern around the parent room until we reach the end of the heirarchy loop
+		generationHeriarchy /= 2;
+		//check the current room and see if it needs more rooms attatched to it
+		if (rooms[roomIndex].heirarchy > 1)
+		{
+			for (int it = 0; it < rooms[roomIndex].heirarchy; it++)
+			{
+				std::cout << "Attaching child room on layer " + std::to_string(generationHeriarchy) + " ";
+				temp.heirarchy = generationHeriarchy;
+				temp.parent = &rooms[roomIndex];
+				
+				//it may be the case that it's just not possible to attach a new room
+				int iterations = 200;
+				bool intersectFlag = false;
+				do
+				{//keep trying to connect a new room to the current room but make sure that it does not intersect with another room
+					iterations--;
+
+					//choose a random point on the parent's shape edge to attatch the new room to, make sure it doesn't intersect with another room
+					sf::Vector2f point = temp.parent->shape.getSize();
+
+					//choose a random edge to shove the room onto and what direction to generate the shape to
+					int dir = rand() % 4;
+					switch (dir)
+					{
+					case 0: // left edge
+						point.x = -1;
+						point.y = rand() % (int)point.y;
+						break;
+					case 1: //upper edge
+						point.x = rand() % (int)point.x;
+						point.y++;
+						break;
+					case 2: //right edge
+						point.y = rand() % (int)point.y;
+						point.x++;
+						break;
+					case 3: //bottom edge
+						point.x = rand() % (int)point.x;
+						point.y = -1;
+						break;
+					default:
+						break;
+					}
+					//we offset the generation point so it doesn't directly intersect with the parent shape
+
+					//transform the perimeter point into world space
+					point.x += temp.parent->shape.getPosition().x;
+					point.y += temp.parent->shape.getPosition().y;
+
+					//now we have a direction to draw the shape in and the point on where to start drawing the shape
+
+					//first generate the shape
+					temp.generate(20, temp.parent->sizeConstraint, point);
+
+					//then rotate it depending on what side it is attatched to
+					switch (dir)
+					{
+					case 0:
+						temp.shape.setRotation(270);
+						break;
+					case 1:
+						temp.shape.setRotation(0);
+						break;
+					case 2:
+						temp.shape.setRotation(90);
+						break;
+					case 3:
+						temp.shape.setRotation(180);
+						break;
+					default:
+						break;
+					}
+
+					intersectFlag = false;
+
+					//now finally check if the shape overlaps another shape
+					for (int it = 0; it < rooms.size(); it++)
+					{
+						if (rooms[it].shape.getGlobalBounds().intersects(temp.shape.getGlobalBounds()))
+						{
+							intersectFlag = true;
+							break;
+						}
+					}
+
+					//if the shape does not overlap another shape then we can finalise it as a valid room
+					if (!intersectFlag)
+					{
+						rooms.push_back(temp);
+					}
+
+				} while (intersectFlag && iterations != 0);
+
+				if (iterations == 0)
+				{
+					std::cout << "Failed" << std::endl;
+				}
+				else
+				{
+					std::cout << "Success" << std::endl;
+				}
+			}
+		}
+		roomIndex++;
+	} while (generationHeriarchy != 0);
 }
 
 void drawRoom(sf::Vector2f pos, sf::Vector2f size)
@@ -125,7 +270,14 @@ void drawRoom(sf::Vector2f pos, sf::Vector2f size)
 	{
 		for (int x = 0; x < size.x; x++)
 		{
-			area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Floor;
+			if (x == 0 || x == size.x - 1 || y == 0 || y == size.y - 1)
+			{
+				area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Wall;
+			}
+			else
+			{
+				area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Floor;
+			}
 		}
 	}
 }
