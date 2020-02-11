@@ -1,6 +1,3 @@
-// Honours.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
@@ -69,139 +66,137 @@ struct Corridor : public Room
 		type = CorridorRoom;
 
 		heirarchy = -2;
-		bool dir[2];
-		//true or false to determine which direction the other room is on the x and y axis
-		dir[0] = (room0->shape.getPosition().x - room1->shape.getPosition().x <= 0); //true if the target is on the right, else on the left
-		dir[1] = (room0->shape.getPosition().y - room1->shape.getPosition().y <= 0); //true if the target is below, else above
+		
+		sf::Vector2f origin, target, originshape, targetshape, direction;
 
-		sf::Vector2f target = room1->shape.getPosition(); //the target point on the other room we are trying to draw a room towards
-		sf::Vector2f origin = room0->shape.getPosition();
+		origin = room0->shape.getPosition();
+		target = room1->shape.getPosition();
+		originshape = room0->shape.getSize();
+		targetshape = room1->shape.getSize();
 
-		sf::Vector2f originShape = room0->shape.getSize();
-		sf::Vector2f targetShape = room1->shape.getSize();
+		//figure out the direction the target it to the origin
+		direction.x = target.x - origin.x;
+		direction.y = target.y - origin.y;
 
-		if (!dir[0]) //move the origin point to the nearest edge to the target shape
-		{
-			origin.x += originShape.x;
-		}
-
-		if (!dir[1])
-		{
-			origin.y += originShape.y;
-		}
+		//we don't need an accurate vector we just need to figure out if the room is top-left, or bottom-right, etc
 
 		bool foundX = false;
 		bool foundY = false;
 
-		//now try to determine with more detail where to draw the corridor then determine where each shape intersects in their axis
-		if (dir[0])
+		//determine a point on the origin's perimeter to draw the corridor from
+		if (direction.x > 0)
 		{
-			for (int x = originShape.x; x > 0; x -= roomTileSize)
+			for (int x = 0; x < originshape.x; x += roomTileSize)
 			{
-				if (x + origin.x > target.x && x + origin.x < target.x + targetShape.x)
-				{//if we find a line between the two shapes then
+				if (origin.x + x > target.x && origin.x + x < target.x + targetshape.x)
+				{
+					//we found a point on our shape's x axis that overlaps the target
 					foundX = true;
-					origin.x += x;
+					origin.x += x + roomTileSize;
 					break;
 				}
 			}
 		}
 		else
 		{
-			for (int x = 0; x < originShape.x; x += roomTileSize)
+			for (int x = originshape.x; x > 0; x -= roomTileSize)
 			{
-				if (x + origin.x > target.x && x + origin.x < target.x + targetShape.x)
-				{//if we find a line between the two shapes then set the origin to the intersect point on the shape
+				if (origin.x + x > target.x && origin.x + x < target.x + targetshape.x)
+				{
+					//we found a point on our shape's x axis that overlaps the target
 					foundX = true;
-					origin.x += x;
+					origin.x += x - roomTileSize;
 					break;
 				}
 			}
 		}
 
-		if (dir[1])
+		//do the same for the y axis
+		if (direction.y > 0)
 		{
-			for (int y = originShape.y; y > 0; y -= roomTileSize)
+			for (int y = 0; y < originshape.y; y += roomTileSize)
 			{
-				if (y + origin.y > target.y && origin.y < target.y + targetShape.y)
+				if (origin.y + y > target.y && origin.y + y < target.y + targetshape.y)
 				{
+					//we found a point on our shape's x axis that overlaps the target
 					foundY = true;
-					origin.y += y;
+					origin.y += y + roomTileSize;
 					break;
 				}
 			}
 		}
 		else
 		{
-			for (int y = 0; y < originShape.y; y += roomTileSize)
+			for (int y = originshape.y; y > 0; y -= roomTileSize)
 			{
-				if (y + origin.y > target.y && origin.y < target.y + targetShape.y)
+				if (origin.y + y > target.y && origin.y + y < target.y + targetshape.y)
 				{
+					//we found a point on our shape's x axis that overlaps the target
 					foundY = true;
-					origin.y += y;
+					origin.y += y - roomTileSize;
 					break;
 				}
 			}
 		}
 
-		if (foundX || foundY)
+		if (!foundX)
 		{
-			//try and draw a corridor either vertically or horizontally and see which one is successful
-			if (dir[0])
+			//if we haven't found an x overlap point then set it to the corresponding edge
+			if (direction.x > 0)
 			{
-				shape.setPosition(origin);
-				shape.setSize(sf::Vector2f(target.x - origin.x + roomTileSize, roomTileSize));
+				origin.x += originshape.x;
+			}
+		}
+
+		if (!foundY)
+		{
+			if (direction.y > 0)
+			{
+				origin.y += originshape.y;
+			}
+		}
+
+		//now we have a point to draw the shape from we will try and draw the corridor
+		if (foundX)
+		{
+			//if we found an x overlap point then we can assume the right corridor to create is vertical
+			if (direction.y > 0)
+			{
+				shape.setPosition(sf::Vector2f(origin.x, origin.y));
+				shape.setSize(sf::Vector2f(roomTileSize, target.y - origin.y));
 				shape.setFillColor(sf::Color::Red);
-
-				if (shape.getGlobalBounds().intersects(room1->shape.getGlobalBounds()))
-				{//make sure the corridor reaches the target
-					return true;
-				}
+				return true;
 			}
 			else
 			{
-				shape.setPosition(target);
-				shape.setSize(sf::Vector2f(origin.x - target.x + roomTileSize, roomTileSize));
+				shape.setPosition(sf::Vector2f(origin.x, target.y));
+				shape.setSize(sf::Vector2f(roomTileSize, origin.y - target.y));
 				shape.setFillColor(sf::Color::Red);
-
-				if (shape.getGlobalBounds().intersects(room0->shape.getGlobalBounds()))
-				{//make sure the corridor reaches the target
-					return true;
-				}
+				return true;
 			}
+		}
 
-			if (dir[1])
+		if (foundY)
+		{
+			//if we found an y overlap point then we can assume the right corridor to create is horizontal
+			if (direction.x > 0)
 			{
-				shape.setPosition(origin);
-				shape.setSize(sf::Vector2f(roomTileSize, target.y - origin.y + roomTileSize));
+				shape.setPosition(sf::Vector2f(origin.x, origin.y));
+				shape.setSize(sf::Vector2f(target.x - origin.x, roomTileSize));
 				shape.setFillColor(sf::Color::Red);
-
-				if (shape.getGlobalBounds().intersects(room1->shape.getGlobalBounds()))
-				{//make sure the corridor reaches the target
-					return true;
-				}
+				return true;
 			}
 			else
 			{
-				shape.setPosition(target);
-				shape.setSize(sf::Vector2f(roomTileSize, origin.y - target.y + roomTileSize));
+				shape.setPosition(sf::Vector2f(target.x, origin.y));
+				shape.setSize(sf::Vector2f(origin.x - target.x, roomTileSize));
 				shape.setFillColor(sf::Color::Red);
-
-				if (shape.getGlobalBounds().intersects(room0->shape.getGlobalBounds()))
-				{//make sure the corridor reaches the target
-					return true;
-				}
+				return true;
 			}
+		}
 
-			//if neither have managed to hit the target then the corridor is impossible
-			std::cout << "Impossible Corridor" << std::endl;
-			return false;
-		}
-		else
-		{
-			std::cout << "No intersect for corridor" << std::endl;
-			return false;
-		}
+		std::cout << "Impossible Corridor" << std::endl;
+		return false;
 	}
 };
 
@@ -304,8 +299,6 @@ void generate()
 
 	//index storage to improve efficiency moving through the vector
 	int roomIndex = 0;
-
-	std::cout << "Done!" << std::endl;
 
 	do
 	{//generate the rooms in a flower pattern around the parent room until we reach the end of the heirarchy loop
@@ -423,7 +416,50 @@ void generate()
 	//after we create the rooms we need to connect them together with corridors
 	//all rooms need to be connected to the closest room of the same heirarchy and their parent room but make sure that they dont intersect with anyone
 	
+	/*
+	//Corridor debug
+	rooms.clear();
+	Room temp;
+
+	//base
+	temp.heirarchy = 15;
+	temp.shape.setFillColor(sf::Color::Red);
+	temp.parentIndex = -1;
+	temp.shape.setPosition(sf::Vector2f(50, 50));
+	temp.shape.setSize(sf::Vector2f(20, 20));
+	rooms.push_back(temp);
+
+	//base child
+	temp.heirarchy = 1;
+	temp.shape.setFillColor(sf::Color::Yellow);
+	temp.parentIndex = 0;
+	temp.shape.setPosition(100, 50);
+	rooms.push_back(temp);
+
+	//child child
+	temp.heirarchy = 0;
+	temp.parentIndex = 1;
+	temp.shape.setFillColor(sf::Color::Blue);
+	temp.shape.setPosition(100, 10);
+	rooms.push_back(temp);
+
+	//child child
+	temp.heirarchy = 0;
+	temp.parentIndex = 1;
+	temp.shape.setFillColor(sf::Color::Blue);
+	temp.shape.setPosition(110, 80);
+	rooms.push_back(temp);
+
+	//child child
+	temp.heirarchy = 0;
+	temp.parentIndex = 1;
+	temp.shape.setFillColor(sf::Color::Blue);
+	temp.shape.setPosition(140, 50);
+	rooms.push_back(temp);
+	*/
+
 	roomIndex = 0;
+
 	do
 	{
 		if (rooms[roomIndex].parentIndex != -1)
@@ -434,7 +470,7 @@ void generate()
 				rooms.push_back(tempCorridor);
 			}
 		}
-
+		/*
 		for (int it = 0; it < rooms.size(); it++)
 		{//connect each room on the same heirarchy level together
 			Corridor tempCorridor;
@@ -460,8 +496,16 @@ void generate()
 				}
 			}
 		}
+		*/
 		roomIndex++;
 		//dont draw corridors onto corridors
+
+		if (roomIndex >= rooms.size())
+		{
+			std::cout << "Unable to make any corridors" << std::endl;
+			break;
+		}
+
 	} while (rooms[roomIndex].type != Room::CorridorRoom);
 	
 }
