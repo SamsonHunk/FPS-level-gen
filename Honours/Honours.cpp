@@ -1,8 +1,16 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/System.hpp>
 #include <iostream>
+#include <writer.h>
+#include "document.h"
+#include "filewritestream.h"
+
+using namespace rapidjson;
 
 //grid dimensions
 int size;
+
+std::string fileName = "test";
 
 enum TileType
 {
@@ -13,8 +21,6 @@ enum TileType
 
 //storage for data representation of generated level
 std::vector<short int> area;
-
-
 
 int roomTileSize = 4; //minumum size of a room measurement
 int maxHeirarchy = 6; //generation variable to control how many rooms to make
@@ -66,7 +72,7 @@ struct Corridor : public Room
 		type = CorridorRoom;
 
 		heirarchy = -2;
-		
+
 		sf::Vector2f origin, target, originshape, targetshape, direction;
 
 		origin = room0->shape.getPosition();
@@ -212,33 +218,25 @@ void generate();
 //function to insert a new room into the structure
 void drawRoom(sf::Vector2f pos, sf::Vector2f size);
 
+//generate and parse a new level file of the currently displayed level
+void outputFile();
+
 int main()
 {
 	//determine how big the map is going to be
 	std::cout << "How large is the map area? 100x100 min" << std::endl;
 	std::cin >> size;
 
-	//add 1 to the size if it is even, we just want to make sure we have a point in the middle
-	if (size % 2 == 0)
-	{
-		size++;
-	}
-
 	srand(time(NULL));
 
-	//initialise the container as empty
+	//reserve the container in memory
 	area.reserve(size*size);
-
-	for (int it = 0; it < area.capacity(); it++)
-	{
-		area.push_back(Empty);
-	}
 
 	//generate the level
 	generate();
 
 	//render and show the final level
-	sf::RenderWindow window(sf::VideoMode(size,size), "Output");
+	sf::RenderWindow window(sf::VideoMode(size, size), "Output");
 	while (window.isOpen())
 	{
 		sf::Event event;
@@ -249,9 +247,10 @@ int main()
 				window.close();
 			}
 
-			if (event.type == sf::Event::KeyReleased)
-			{//press a button to make a new level
+			if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::A)
+			{//press the a button to make a new level
 				//reset the level
+
 
 				for (int it = 0; it < area.size(); it++)
 				{
@@ -263,10 +262,19 @@ int main()
 				//make a new one
 				generate();
 			}
+
+			if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::S)
+			{//press s to generate the json level file
+				std::cout << "Enter level file name: ";
+				std::cin >> fileName;
+				std::cout << ".json" << std::endl;
+				outputFile();
+			}
 		}
 
+
 		window.clear();
-		for (int it = 0; it < rooms.size(); it++)
+		for (int it = rooms.size() - 1; it > -1; it--)
 		{//draw all the room graphics
 			window.draw(rooms[it].shape);
 		}
@@ -347,8 +355,8 @@ void generate()
 						point.y += roomSize.y + roomTileSize;
 						break;
 					}
-					
-					
+
+
 					//generate the shape with the chosen point in mind
 					temp.generate(2, rooms[temp.parentIndex].sizeConstraint, point);
 
@@ -364,9 +372,9 @@ void generate()
 						temp.shape.move(sf::Vector2f(0, -roomSize.y));
 						break;
 					}
-					
+
 					intersectFlag = false;
-					
+
 					//now finally check if the shape overlaps another shape
 					for (int it = 0; it < rooms.size(); it++)
 					{
@@ -376,7 +384,7 @@ void generate()
 							break;
 						}
 					}
-					
+
 					//if the shape does not overlap another shape then we can finalise it as a valid room
 					if (!intersectFlag)
 					{
@@ -415,7 +423,7 @@ void generate()
 
 	//after we create the rooms we need to connect them together with corridors
 	//all rooms need to be connected to the closest room of the same heirarchy and their parent room but make sure that they dont intersect with anyone
-	
+
 	/*
 	//Corridor debug
 	rooms.clear();
@@ -470,7 +478,7 @@ void generate()
 				rooms.push_back(tempCorridor);
 			}
 		}
-		/*
+
 		for (int it = 0; it < rooms.size(); it++)
 		{//connect each room on the same heirarchy level together
 			Corridor tempCorridor;
@@ -496,7 +504,8 @@ void generate()
 				}
 			}
 		}
-		*/
+
+
 		roomIndex++;
 		//dont draw corridors onto corridors
 
@@ -507,7 +516,7 @@ void generate()
 		}
 
 	} while (rooms[roomIndex].type != Room::CorridorRoom);
-	
+
 }
 
 void drawRoom(sf::Vector2f pos, sf::Vector2f size)
@@ -529,14 +538,72 @@ void drawRoom(sf::Vector2f pos, sf::Vector2f size)
 	{
 		for (int x = 0; x < size.x; x++)
 		{
-			if (x == 0 || x == size.x - 1 || y == 0 || y == size.y - 1)
+			area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Floor;
+		}
+	}
+}
+
+void outputFile()
+{
+	//initialise the structure as empty
+	area.clear();
+
+	for (int it = 0; it < area.capacity(); it++)
+	{
+		area.push_back(Empty);
+	}
+
+	std::cout << "Generating walls" << std::endl;
+
+	//first create bare floor of each room
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		drawRoom(rooms[it].shape.getPosition(), rooms[it].shape.getSize());
+	}
+
+	//run edge detection and colour the edges in as walls
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 1; x < size - 1; x++)
+		{
+			if (area[index(x - 1, y)] == Empty || area[index(x + 1, y)] == Empty && area[index(x, y)] == Floor)
 			{
-				area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Wall;
-			}
-			else
-			{
-				area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Floor;
+				area[index(x, y)] = Wall;
 			}
 		}
 	}
+
+	for (int x = 0; x < size; x++)
+	{
+		for (int y = 1; y < size - 1; y++)
+		{
+			if (area[index(x, y - 1)] == Empty || area[index(x, y + 1)] == Empty && area[index(x, y)] == Floor)
+			{
+				area[index(x, y)] = Wall;
+			}
+		}
+	}
+
+	std::cout << "Writing file" << std::endl;
+
+	//write the array into a json file
+	FILE* fp = fopen((fileName + ".json").data(), "wb");
+	char writeBuffer[65536];
+	FileWriteStream stream(fp, writeBuffer, sizeof(writeBuffer));
+
+	Writer<FileWriteStream> writer(stream);
+
+	writer.StartObject();
+	writer.Key("Size");
+	writer.Int(size);
+	writer.Key("Data");
+	writer.StartArray();
+	for (int it = 0; it < area.size(); it++)
+	{
+		writer.Int(area[it]);
+	}
+	writer.EndArray();
+	writer.EndObject();
+	fclose(fp);
+	std::cout << "Done!" << std::endl;
 }
