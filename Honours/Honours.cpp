@@ -200,8 +200,6 @@ struct Corridor : public Room
 				return true;
 			}
 		}
-
-		std::cout << "Impossible Corridor" << std::endl;
 		return false;
 	}
 };
@@ -267,7 +265,6 @@ int main()
 			{//press s to generate the json level file
 				std::cout << "Enter level file name: ";
 				std::cin >> fileName;
-				std::cout << ".json" << std::endl;
 				outputFile();
 			}
 		}
@@ -424,48 +421,6 @@ void generate()
 	//after we create the rooms we need to connect them together with corridors
 	//all rooms need to be connected to the closest room of the same heirarchy and their parent room but make sure that they dont intersect with anyone
 
-	/*
-	//Corridor debug
-	rooms.clear();
-	Room temp;
-
-	//base
-	temp.heirarchy = 15;
-	temp.shape.setFillColor(sf::Color::Red);
-	temp.parentIndex = -1;
-	temp.shape.setPosition(sf::Vector2f(50, 50));
-	temp.shape.setSize(sf::Vector2f(20, 20));
-	rooms.push_back(temp);
-
-	//base child
-	temp.heirarchy = 1;
-	temp.shape.setFillColor(sf::Color::Yellow);
-	temp.parentIndex = 0;
-	temp.shape.setPosition(100, 50);
-	rooms.push_back(temp);
-
-	//child child
-	temp.heirarchy = 0;
-	temp.parentIndex = 1;
-	temp.shape.setFillColor(sf::Color::Blue);
-	temp.shape.setPosition(100, 10);
-	rooms.push_back(temp);
-
-	//child child
-	temp.heirarchy = 0;
-	temp.parentIndex = 1;
-	temp.shape.setFillColor(sf::Color::Blue);
-	temp.shape.setPosition(110, 80);
-	rooms.push_back(temp);
-
-	//child child
-	temp.heirarchy = 0;
-	temp.parentIndex = 1;
-	temp.shape.setFillColor(sf::Color::Blue);
-	temp.shape.setPosition(140, 50);
-	rooms.push_back(temp);
-	*/
-
 	roomIndex = 0;
 
 	do
@@ -566,7 +521,7 @@ void outputFile()
 	{
 		for (int x = 1; x < size - 1; x++)
 		{
-			if (area[index(x - 1, y)] == Empty || area[index(x + 1, y)] == Empty && area[index(x, y)] == Floor)
+			if ((area[index(x - 1, y)] == Empty || area[index(x + 1, y)] == Empty) && area[index(x, y)] == Floor)
 			{
 				area[index(x, y)] = Wall;
 			}
@@ -577,7 +532,7 @@ void outputFile()
 	{
 		for (int y = 1; y < size - 1; y++)
 		{
-			if (area[index(x, y - 1)] == Empty || area[index(x, y + 1)] == Empty && area[index(x, y)] == Floor)
+			if ((area[index(x, y - 1)] == Empty || area[index(x, y + 1)] == Empty) && area[index(x, y)] == Floor)
 			{
 				area[index(x, y)] = Wall;
 			}
@@ -587,7 +542,7 @@ void outputFile()
 	std::cout << "Writing file" << std::endl;
 
 	//write the array into a json file
-	FILE* fp = fopen((fileName + ".json").data(), "wb");
+	FILE* fp = fopen(("output/" + fileName + ".json").data(), "wb");
 	char writeBuffer[65536];
 	FileWriteStream stream(fp, writeBuffer, sizeof(writeBuffer));
 
