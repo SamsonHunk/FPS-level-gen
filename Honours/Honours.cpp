@@ -472,28 +472,28 @@ void generate()
 
 	} while (rooms[roomIndex].type != Room::CorridorRoom);
 
+
 }
 
 void drawRoom(sf::Vector2f pos, sf::Vector2f size)
 {
 	//save the room data into the final output
 
-	//figure out the index of the shapes bottom left corner
+	//figure out the index of the shapes top right corner
 	/*
+	____________
 	|
 	|
 	|
-	|________
+	|
 	*/
-
-	int cornerCoord[2] = { pos.x - (size.x / 2), pos.y - (size.y / 2) };
 
 	//then we build a room as a rectangle of floor surrounded by wall
 	for (int y = 0; y < size.y; y++)
 	{
 		for (int x = 0; x < size.x; x++)
 		{
-			area[index(cornerCoord[0] + x, cornerCoord[1] + y)] = Floor;
+			area[index(pos.x + x, pos.y + y)] = Floor;
 		}
 	}
 }
