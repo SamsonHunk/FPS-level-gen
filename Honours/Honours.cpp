@@ -4,6 +4,7 @@
 #include <writer.h>
 #include "document.h"
 #include "filewritestream.h"
+#include "Rooms.h"
 
 using namespace rapidjson;
 
@@ -25,184 +26,8 @@ std::vector<short int> area;
 int roomTileSize = 4; //minumum size of a room measurement
 int maxHeirarchy = 6; //generation variable to control how many rooms to make
 
-//the structure that contains all the information each room needs when generated
-//the sfml class can also store the position and size of the shape for use in the exporting too
-struct Room
-{
-	enum RoomType
-	{
-		BaseRoom,
-		NormalRoom,
-		CorridorRoom
-	};
-
-	RoomType type = NormalRoom;
-
-	int heirarchy;
-	sf::RectangleShape shape;
-	int parentIndex = -1;
-	int sizeConstraint;
-
-	sf::Vector2i tileDimensions;
-
-	void generate(int minSize, int maxSize, sf::Vector2f pos)
-	{//general generation rules for each room
-		sf::Vector2f size;
-		size.x = rand() % ((maxSize - minSize) * roomTileSize) + minSize * roomTileSize;
-		size.y = rand() % ((maxSize - minSize) * roomTileSize) + minSize * roomTileSize;
-
-		//convert the sze into room tile measurements, usefult for corridor generation
-		tileDimensions.x = size.x / roomTileSize;
-		tileDimensions.y = size.y / roomTileSize;
-
-		shape.setSize(size);
-		shape.setPosition(pos);
-
-		sizeConstraint = maxSize;
-	}
-};
-
 //sfml rectangles to visualise the created level
 std::vector<Room> rooms;
-
-struct Corridor : public Room
-{// a one tile long room to connect to other rooms together
-	bool generateCorridor(Room* room0, Room* room1)
-	{
-		type = CorridorRoom;
-
-		heirarchy = -2;
-
-		sf::Vector2f origin, target, originshape, targetshape, direction;
-
-		origin = room0->shape.getPosition();
-		target = room1->shape.getPosition();
-		originshape = room0->shape.getSize();
-		targetshape = room1->shape.getSize();
-
-		//figure out the direction the target it to the origin
-		direction.x = target.x - origin.x;
-		direction.y = target.y - origin.y;
-
-		//we don't need an accurate vector we just need to figure out if the room is top-left, or bottom-right, etc
-
-		bool foundX = false;
-		bool foundY = false;
-
-		//determine a point on the origin's perimeter to draw the corridor from
-		if (direction.x > 0)
-		{
-			for (int x = 0; x < originshape.x; x += roomTileSize)
-			{
-				if (origin.x + x > target.x && origin.x + x < target.x + targetshape.x)
-				{
-					//we found a point on our shape's x axis that overlaps the target
-					foundX = true;
-					origin.x += x + roomTileSize;
-					break;
-				}
-			}
-		}
-		else
-		{
-			for (int x = originshape.x; x > 0; x -= roomTileSize)
-			{
-				if (origin.x + x > target.x && origin.x + x < target.x + targetshape.x)
-				{
-					//we found a point on our shape's x axis that overlaps the target
-					foundX = true;
-					origin.x += x - roomTileSize;
-					break;
-				}
-			}
-		}
-
-		//do the same for the y axis
-		if (direction.y > 0)
-		{
-			for (int y = 0; y < originshape.y; y += roomTileSize)
-			{
-				if (origin.y + y > target.y && origin.y + y < target.y + targetshape.y)
-				{
-					//we found a point on our shape's x axis that overlaps the target
-					foundY = true;
-					origin.y += y + roomTileSize;
-					break;
-				}
-			}
-		}
-		else
-		{
-			for (int y = originshape.y; y > 0; y -= roomTileSize)
-			{
-				if (origin.y + y > target.y && origin.y + y < target.y + targetshape.y)
-				{
-					//we found a point on our shape's x axis that overlaps the target
-					foundY = true;
-					origin.y += y - roomTileSize;
-					break;
-				}
-			}
-		}
-
-		if (!foundX)
-		{
-			//if we haven't found an x overlap point then set it to the corresponding edge
-			if (direction.x > 0)
-			{
-				origin.x += originshape.x;
-			}
-		}
-
-		if (!foundY)
-		{
-			if (direction.y > 0)
-			{
-				origin.y += originshape.y;
-			}
-		}
-
-		//now we have a point to draw the shape from we will try and draw the corridor
-		if (foundX)
-		{
-			//if we found an x overlap point then we can assume the right corridor to create is vertical
-			if (direction.y > 0)
-			{
-				shape.setPosition(sf::Vector2f(origin.x, origin.y));
-				shape.setSize(sf::Vector2f(roomTileSize, target.y - origin.y));
-				shape.setFillColor(sf::Color::Red);
-				return true;
-			}
-			else
-			{
-				shape.setPosition(sf::Vector2f(origin.x, target.y));
-				shape.setSize(sf::Vector2f(roomTileSize, origin.y - target.y));
-				shape.setFillColor(sf::Color::Red);
-				return true;
-			}
-		}
-
-		if (foundY)
-		{
-			//if we found an y overlap point then we can assume the right corridor to create is horizontal
-			if (direction.x > 0)
-			{
-				shape.setPosition(sf::Vector2f(origin.x, origin.y));
-				shape.setSize(sf::Vector2f(target.x - origin.x, roomTileSize));
-				shape.setFillColor(sf::Color::Red);
-				return true;
-			}
-			else
-			{
-				shape.setPosition(sf::Vector2f(target.x, origin.y));
-				shape.setSize(sf::Vector2f(origin.x - target.x, roomTileSize));
-				shape.setFillColor(sf::Color::Red);
-				return true;
-			}
-		}
-		return false;
-	}
-};
 
 //small function to ease accessing and organising data in the vector
 int index(int x, int y)
@@ -288,14 +113,14 @@ void generate()
 
 	int center = (size / 2);
 
-	Room base;
-	base.type = Room::BaseRoom;
-	int generationHeriarchy = maxHeirarchy; //current position in the generation loop
 
+
+	Base base;
 	//generate the initial room, no other room in the map can be bigger than this room
-	base.heirarchy = generationHeriarchy;
-	base.generate(10, 8, sf::Vector2f(center, center));
-	base.shape.setFillColor(sf::Color::Yellow);
+	base.generate(sf::Vector2f(center, center), size);
+
+	int generationHeriarchy = base.heirarchy; //current position in the generation loop
+
 
 	//center the first room into the center of the screen
 	base.shape.setPosition(base.shape.getPosition().x - base.shape.getSize().x, base.shape.getPosition().y - base.shape.getSize().y);
@@ -307,7 +132,7 @@ void generate()
 
 	do
 	{//generate the rooms in a flower pattern around the parent room until we reach the end of the heirarchy loop
-		Room temp;
+		NormalRoom temp;
 		generationHeriarchy /= 2;
 		//check the current room and see if it needs more rooms attatched to it
 		if (rooms[roomIndex].heirarchy > 1)
@@ -347,7 +172,7 @@ void generate()
 						point.y += rand() % (int)roomSize.y;
 						point.x += roomTileSize + roomSize.x;
 						break;
-					case 3: //bottom edge
+					case 3: //bottom edge`
 						point.x += rand() % (int)roomSize.x;
 						point.y += roomSize.y + roomTileSize;
 						break;
@@ -355,7 +180,7 @@ void generate()
 
 
 					//generate the shape with the chosen point in mind
-					temp.generate(2, rooms[temp.parentIndex].sizeConstraint, point);
+					temp.generate(point, rooms[temp.parentIndex].sizeConstraint);
 
 					roomSize = temp.shape.getSize();
 
@@ -428,7 +253,7 @@ void generate()
 		if (rooms[roomIndex].parentIndex != -1)
 		{//if the room has a parent, make a corridor connecting them together
 			Corridor tempCorridor;
-			if (tempCorridor.generateCorridor(&rooms[roomIndex], &rooms[rooms[roomIndex].parentIndex]))
+			if (tempCorridor.generate(&rooms[roomIndex], &rooms[rooms[roomIndex].parentIndex]))
 			{
 				rooms.push_back(tempCorridor);
 			}
@@ -437,9 +262,9 @@ void generate()
 		for (int it = 0; it < rooms.size(); it++)
 		{//connect each room on the same heirarchy level together
 			Corridor tempCorridor;
-			if (it != roomIndex && rooms[it].type != Room::CorridorRoom && rooms[it].heirarchy == rooms[roomIndex].heirarchy)
+			if (it != roomIndex && rooms[it].type != Room::CorridorType && rooms[it].heirarchy == rooms[roomIndex].heirarchy)
 			{
-				if (tempCorridor.generateCorridor(&rooms[roomIndex], &rooms[it]))
+				if (tempCorridor.generate(&rooms[roomIndex], &rooms[it]))
 				{
 					bool intersectFlag = false;
 					//check that the corridor doesn't intersect with other rooms
@@ -470,7 +295,7 @@ void generate()
 			break;
 		}
 
-	} while (rooms[roomIndex].type != Room::CorridorRoom);
+	} while (rooms[roomIndex].type != Room::CorridorType);
 
 
 }
