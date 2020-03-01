@@ -24,8 +24,10 @@ public:
 
 	int sizeConstraint;
 
+	std::vector<sf::Vector2f> connectionsPos;
+
 protected:
-	int roomTileSize = 4;
+	int roomTileSize = 5;
 };
 
 class Base : public Room

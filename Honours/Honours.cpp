@@ -20,10 +20,18 @@ enum TileType
 	Wall,
 };
 
-//storage for data representation of generated level
-std::vector<short int> area;
+//Data for each pixel of the map
+struct AreaPixel
+{
+	TileType tile;
+	float heat;
+	Room::RoomType roomType;
+};
 
-int roomTileSize = 4; //minumum size of a room measurement
+//storage for data representation of generated level
+std::vector<AreaPixel> area;
+
+int roomTileSize = 5; //minumum size of a room measurement
 int maxHeirarchy = 6; //generation variable to control how many rooms to make
 
 //sfml rectangles to visualise the created level
@@ -39,7 +47,7 @@ int index(int x, int y)
 void generate();
 
 //function to insert a new room into the structure
-void drawRoom(sf::Vector2f pos, sf::Vector2f size);
+void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type);
 
 //generate and parse a new level file of the currently displayed level
 void outputFile();
@@ -77,7 +85,7 @@ int main()
 
 				for (int it = 0; it < area.size(); it++)
 				{
-					area[it] = Empty;
+					area[it].tile = Empty;
 				}
 
 				rooms.clear();
@@ -297,10 +305,56 @@ void generate()
 
 	} while (rooms[roomIndex].type != Room::CorridorType);
 
+	//write the rooms into the data structure and generate the walls
+
+	//initialise the structure as empty
+	area.clear();
+
+	AreaPixel emptyPixel;
+	emptyPixel.heat = 0;
+	emptyPixel.tile = Empty;
+
+	for (int it = 0; it < area.capacity(); it++)
+	{
+		area.push_back(emptyPixel);
+	}
+
+	std::cout << "Generating walls" << std::endl;
+
+	//first create bare floor of each room
+	for (int it = rooms.size() - 1; it > 0; it--)
+	{
+		drawRoom(rooms[it].shape.getPosition(), rooms[it].shape.getSize(), rooms[it].type);
+	}
+
+	//run edge detection and colour the edges in as walls
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 1; x < size - 1; x++)
+		{
+			if ((area[index(x - 1, y)].tile == Empty || area[index(x + 1, y)].tile == Empty) && area[index(x, y)].tile == Floor)
+			{
+				area[index(x, y)].tile = Wall;
+			}
+		}
+	}
+
+	for (int x = 0; x < size; x++)
+	{
+		for (int y = 1; y < size - 1; y++)
+		{
+			if ((area[index(x, y - 1)].tile == Empty || area[index(x, y + 1)].tile == Empty) && area[index(x, y)].tile == Floor)
+			{
+				area[index(x, y)].tile = Wall;
+			}
+		}
+	}
+
+	//figure out a heat map of the map and place cover in areas to reduce that heat
 
 }
 
-void drawRoom(sf::Vector2f pos, sf::Vector2f size)
+void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type)
 {
 	//save the room data into the final output
 
@@ -318,53 +372,15 @@ void drawRoom(sf::Vector2f pos, sf::Vector2f size)
 	{
 		for (int x = 0; x < size.x; x++)
 		{
-			area[index(pos.x + x, pos.y + y)] = Floor;
+			area[index(pos.x + x, pos.y + y)].tile = Floor;
+			area[index(pos.x + x, pos.y + y)].roomType = type;
 		}
 	}
 }
 
 void outputFile()
 {
-	//initialise the structure as empty
-	area.clear();
-
-	for (int it = 0; it < area.capacity(); it++)
-	{
-		area.push_back(Empty);
-	}
-
-	std::cout << "Generating walls" << std::endl;
-
-	//first create bare floor of each room
-	for (int it = 0; it < rooms.size(); it++)
-	{
-		drawRoom(rooms[it].shape.getPosition(), rooms[it].shape.getSize());
-	}
-
-	//run edge detection and colour the edges in as walls
-	for (int y = 0; y < size; y++)
-	{
-		for (int x = 1; x < size - 1; x++)
-		{
-			if ((area[index(x - 1, y)] == Empty || area[index(x + 1, y)] == Empty) && area[index(x, y)] == Floor)
-			{
-				area[index(x, y)] = Wall;
-			}
-		}
-	}
-
-	for (int x = 0; x < size; x++)
-	{
-		for (int y = 1; y < size - 1; y++)
-		{
-			if ((area[index(x, y - 1)] == Empty || area[index(x, y + 1)] == Empty) && area[index(x, y)] == Floor)
-			{
-				area[index(x, y)] = Wall;
-			}
-		}
-	}
-
-	std::cout << "Writing file" << std::endl;
+	std::cout << "Writing file..." << std::endl;
 
 	//write the array into a json file
 	FILE* fp = fopen(("output/" + fileName + ".json").data(), "wb");
@@ -380,7 +396,7 @@ void outputFile()
 	writer.StartArray();
 	for (int it = 0; it < area.size(); it++)
 	{
-		writer.Int(area[it]);
+		writer.Int(area[it].tile);
 	}
 	writer.EndArray();
 	writer.EndObject();

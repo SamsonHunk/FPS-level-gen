@@ -146,6 +146,8 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(origin.x, origin.y));
 			shape.setSize(sf::Vector2f(roomTileSize, target.y - origin.y));
 			shape.setFillColor(sf::Color::Red);
+			room0->connectionsPos.push_back(origin);
+			room1->connectionsPos.push_back(target);
 			return true;
 		}
 		else
@@ -153,6 +155,8 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(origin.x, target.y));
 			shape.setSize(sf::Vector2f(roomTileSize, origin.y - target.y));
 			shape.setFillColor(sf::Color::Red);
+			room0->connectionsPos.push_back(origin);
+			room1->connectionsPos.push_back(target);
 			return true;
 		}
 	}
@@ -165,6 +169,8 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(origin.x, origin.y));
 			shape.setSize(sf::Vector2f(target.x - origin.x, roomTileSize));
 			shape.setFillColor(sf::Color::Red);
+			room0->connectionsPos.push_back(origin);
+			room1->connectionsPos.push_back(target);
 			return true;
 		}
 		else
@@ -172,6 +178,8 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(target.x, origin.y));
 			shape.setSize(sf::Vector2f(origin.x - target.x, roomTileSize));
 			shape.setFillColor(sf::Color::Red);
+			room0->connectionsPos.push_back(origin);
+			room1->connectionsPos.push_back(target);
 			return true;
 		}
 	}
