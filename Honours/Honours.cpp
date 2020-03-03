@@ -18,6 +18,7 @@ enum TileType
 	Empty,
 	Floor,
 	Wall,
+	Cover
 };
 
 //Data for each pixel of the map
@@ -51,6 +52,9 @@ void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type);
 
 //generate and parse a new level file of the currently displayed level
 void outputFile();
+
+//create a heat map for a certain room
+void generateHeat(Room* room);
 
 int main()
 {
@@ -351,7 +355,13 @@ void generate()
 	}
 
 	//figure out a heat map of the map and place cover in areas to reduce that heat
-
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		if (rooms[it].type != Room::CorridorType)
+		{// dont put cover in the corridors, only in the open areas
+			generateHeat(&rooms[it]);
+		}
+	}
 }
 
 void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type)
@@ -402,4 +412,48 @@ void outputFile()
 	writer.EndObject();
 	fclose(fp);
 	std::cout << "Done!" << std::endl;
+}
+
+void generateHeat(Room* room)
+{
+	struct Source
+	{
+		sf::Vector2i pos;
+		int direction; //0 for up, 1 for down, 2 for left, 3 for right
+	};
+
+	std::vector<Source> sources;
+
+	sf::Vector2f center;
+	center.x = room->shape.getPosition().x + room->shape.getSize().x / 2.f;
+	center.y = room->shape.getPosition().y + room->shape.getSize().y / 2.f;
+
+	for (int it = 0; it < room->connections.size(); it++)
+	{
+		Source source;
+		source.pos.x = room->connections[it].pos.x;
+		source.pos.y = room->connections[it].pos.y;
+
+		if (source.pos.x >= room->shape.getPosition().x + room->shape.getSize().x)
+		{
+			source.direction = 2;
+		}
+		else if (source.pos.x <= room->shape.getPosition().x)
+		{
+			source.direction = 3;
+		}
+		else if (source.pos.y <= room->shape.getPosition().y)
+		{
+			source.direction = 1;
+		}
+		else
+		{
+			source.direction = 0;
+		}
+
+		sources.push_back(source);
+	}
+
+	//generate rays from the doorway
+	int iterations = 200;
 }

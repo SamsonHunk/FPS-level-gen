@@ -137,6 +137,9 @@ bool Corridor::generate(Room * room0, Room * room1)
 		}
 	}
 
+	//store the connecting position in each of the rooms for later use
+	Connection temp;
+
 	//now we have a point to draw the shape from we will try and draw the corridor
 	if (foundX)
 	{
@@ -146,8 +149,14 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(origin.x, origin.y));
 			shape.setSize(sf::Vector2f(roomTileSize, target.y - origin.y));
 			shape.setFillColor(sf::Color::Red);
-			room0->connectionsPos.push_back(origin);
-			room1->connectionsPos.push_back(target);
+
+			temp.pos = origin;
+			temp.dir = Direction::Up;
+			room0->connections.push_back(temp);
+
+			temp.pos = sf::Vector2f(origin.x, target.y);
+			temp.dir = Direction::Down;
+			room1->connections.push_back(temp);
 			return true;
 		}
 		else
@@ -155,8 +164,14 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(origin.x, target.y));
 			shape.setSize(sf::Vector2f(roomTileSize, origin.y - target.y));
 			shape.setFillColor(sf::Color::Red);
-			room0->connectionsPos.push_back(origin);
-			room1->connectionsPos.push_back(target);
+
+			temp.pos = origin;
+			temp.dir = Direction::Down;
+			room0->connections.push_back(temp);
+
+			temp.pos = shape.getPosition();
+			temp.dir = Direction::Up;
+			room1->connections.push_back(temp);
 			return true;
 		}
 	}
@@ -169,8 +184,14 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(origin.x, origin.y));
 			shape.setSize(sf::Vector2f(target.x - origin.x, roomTileSize));
 			shape.setFillColor(sf::Color::Red);
-			room0->connectionsPos.push_back(origin);
-			room1->connectionsPos.push_back(target);
+
+			temp.pos = origin;
+			temp.dir = Direction::Left;
+			room0->connections.push_back(temp);
+
+			temp.pos = sf::Vector2f(target.x, origin.y);
+			temp.dir = Direction::Right;
+			room1->connections.push_back(temp);
 			return true;
 		}
 		else
@@ -178,8 +199,14 @@ bool Corridor::generate(Room * room0, Room * room1)
 			shape.setPosition(sf::Vector2f(target.x, origin.y));
 			shape.setSize(sf::Vector2f(origin.x - target.x, roomTileSize));
 			shape.setFillColor(sf::Color::Red);
-			room0->connectionsPos.push_back(origin);
-			room1->connectionsPos.push_back(target);
+
+			temp.pos = origin;
+			temp.dir = Direction::Right;
+			room0->connections.push_back(temp);
+
+			temp.pos = shape.getPosition();
+			temp.dir = Direction::Left;
+			room1->connections.push_back(temp);
 			return true;
 		}
 	}

@@ -14,6 +14,20 @@ public:
 		CorridorType
 	};
 
+	enum Direction
+	{
+		Up,
+		Down,
+		Left,
+		Right
+	};
+
+	struct Connection
+	{
+		sf::Vector2f pos;
+		Direction dir;
+	};
+
 	//shared variables between all room types
 	RoomType type;
 
@@ -24,7 +38,7 @@ public:
 
 	int sizeConstraint;
 
-	std::vector<sf::Vector2f> connectionsPos;
+	std::vector<Connection> connections;
 
 protected:
 	int roomTileSize = 5;
