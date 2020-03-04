@@ -75,9 +75,32 @@ int main()
 	//generate the level
 	generate();
 
+	sf::Image heatMap;
+	sf::Color heatcolor = sf::Color::Red;
+
+	//generate the heatmap image from the data structure
+	heatMap.create(size, size, sf::Color::Black);
+
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 0; x < size; x++)
+		{
+			float heat = area[index(x, y)].heat;
+			heatcolor.r = (int)(heat * 255.f);
+			heatMap.setPixel(x, y, heatcolor);
+		}
+	}
+	heatMap.createMaskFromColor(sf::Color::Black);
+
+	sf::Texture heatTexture;
+	heatTexture.loadFromImage(heatMap);
+	sf::Sprite heatSprite;
+	heatSprite.setTexture(heatTexture);
+
 	//render and show the final level
 	sf::RenderWindow window(sf::VideoMode(size, size), "Output");
-	while (window.isOpen())
+	sf::RenderWindow heatWindow(sf::VideoMode(size, size), "Heatmap");
+	while (window.isOpen() && heatWindow.isOpen())
 	{
 		sf::Event event;
 		while (window.pollEvent(event))
@@ -85,6 +108,7 @@ int main()
 			if (event.type == sf::Event::Closed)
 			{
 				window.close();
+				heatWindow.close();
 			}
 
 			if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::A)
@@ -95,6 +119,8 @@ int main()
 				for (int it = 0; it < area.size(); it++)
 				{
 					area[it].tile = Empty;
+					area[it].heat = 0;
+					area[it].roomType = Room::Empty;
 				}
 
 				rooms.clear();
@@ -117,7 +143,14 @@ int main()
 		{//draw all the room graphics
 			window.draw(rooms[it].shape);
 		}
+		window.draw(heatSprite);
 		window.display();
+
+		//display the heatmap
+		heatWindow.clear(sf::Color::Transparent);
+		heatWindow.draw(heatSprite);
+		heatWindow.display();
+
 	}
 
 	return 0;
@@ -364,6 +397,8 @@ void generate()
 	{
 		if (rooms[it].type != Room::CorridorType)
 		{// dont put cover in the corridors, only in the open areas
+			std::cout << "Generating heatmap for room " << std::to_string(it) << std::endl;
+
 			generateHeat(&rooms[it]);
 		}
 	}
@@ -421,14 +456,147 @@ void outputFile()
 
 void generateHeat(Room* room)
 {
+	struct particle
+	{
+		sf::Vector2i pos;
+		Room::Direction dir;
+		float heat;
+		bool isNew;
+	};
+
+	std::vector<particle> particles;
+
 	//generate a heat map for each room defining which areas of the map are the most dangerous
 	for (int it = 0; it < room->connections.size(); it++) //each room connection is a heat source
 	{
+		//reset the particles
+		particles.clear();
+
 		Room::Connection* source = &room->connections[it];
 
-		//spawn the initial heat origin
-		area[index(source->pos.x, source->pos.y)].heat = 1.f;
+		//we only need to move the heat along the single room
+		int travelDistance;
 
-		
+		if (source->dir == Room::Left || source->dir == Room::Right)
+		{
+			travelDistance = room->shape.getSize().x;
+		}
+		else
+		{
+			travelDistance = room->shape.getSize().y;
+		}
+
+		//generate the initial particle
+		particle newParticle;
+		newParticle.pos = sf::Vector2i(source->pos.x , source->pos.y);
+		newParticle.dir = source->dir;
+		newParticle.heat = 0.5f;
+		newParticle.isNew = true;
+
+		sf::Vector2i nextPos;
+
+		//lambda function for the particle generation
+		auto generateParticle = [&](sf::Vector2i pos, particle parentParticle)
+		{//rules for particle generation
+			if (area[index(pos)].tile != Wall)
+			{
+				newParticle.heat = parentParticle.heat * 0.995f;
+				newParticle.pos = pos;
+				//check there is not another particle already there in the same place
+				bool isUnique = true;
+				for (int it = 0; it < particles.size(); it++)
+				{
+					if (newParticle.pos == particles[it].pos)
+					{
+						isUnique = false;
+						break;
+					}
+				}
+
+				if (isUnique)
+				{
+					particles.push_back(newParticle);
+				}
+			}
+		};
+
+		particles.push_back(newParticle);
+
+		for (int distance = 0; distance < travelDistance; distance++)
+		{
+			int currentParticleCount = particles.size();
+
+			//for each new particle use the generation rules to figure out where to spawn the next particle
+			for (int particle = 0; particle < currentParticleCount; particle++)
+			{
+				if (particles[particle].isNew)
+				{
+					particles[particle].isNew = false;
+
+					//try and generate 3 new particles in a triangle pointing in the particle's direction
+					switch (particles[particle].dir)
+					{
+					case Room::Up:
+						nextPos = particles[particle].pos;
+						nextPos.y -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.x -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.x += 1;
+						generateParticle(nextPos, particles[particle]);
+						break;
+					case Room::Left:
+						nextPos = particles[particle].pos;
+						nextPos.x -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.y -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.y -= 1;
+						generateParticle(nextPos, particles[particle]);
+						break;
+					case Room::Right:
+						nextPos = particles[particle].pos;
+						nextPos.x += 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.y -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.y -= 1;
+						generateParticle(nextPos, particles[particle]);
+						break;
+					case Room::Down:
+						nextPos = particles[particle].pos;
+						nextPos.y += 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.x -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos = particles[particle].pos;
+						nextPos.x += 1;
+						generateParticle(nextPos, particles[particle]);
+						break;
+					}
+				}
+			}
+		}
+
+		//now record the particles to the data structure
+		for (int count = 0; count < particles.size(); count++) 
+		{
+			area[index(particles[count].pos)].heat += particles[count].heat;
+		}
 	}
 }

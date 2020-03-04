@@ -11,7 +11,8 @@ public:
 	{
 		BaseType,
 		NormalType,
-		CorridorType
+		CorridorType,
+		Empty
 	};
 
 	enum Direction
