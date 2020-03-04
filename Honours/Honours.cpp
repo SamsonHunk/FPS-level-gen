@@ -44,6 +44,11 @@ int index(int x, int y)
 	return x + size * y;
 }
 
+int index(sf::Vector2i xy)
+{
+	return xy.x + size * xy.y;
+}
+
 //function encompassing the level generation
 void generate();
 
@@ -416,44 +421,14 @@ void outputFile()
 
 void generateHeat(Room* room)
 {
-	struct Source
+	//generate a heat map for each room defining which areas of the map are the most dangerous
+	for (int it = 0; it < room->connections.size(); it++) //each room connection is a heat source
 	{
-		sf::Vector2i pos;
-		int direction; //0 for up, 1 for down, 2 for left, 3 for right
-	};
+		Room::Connection* source = &room->connections[it];
 
-	std::vector<Source> sources;
+		//spawn the initial heat origin
+		area[index(source->pos.x, source->pos.y)].heat = 1.f;
 
-	sf::Vector2f center;
-	center.x = room->shape.getPosition().x + room->shape.getSize().x / 2.f;
-	center.y = room->shape.getPosition().y + room->shape.getSize().y / 2.f;
-
-	for (int it = 0; it < room->connections.size(); it++)
-	{
-		Source source;
-		source.pos.x = room->connections[it].pos.x;
-		source.pos.y = room->connections[it].pos.y;
-
-		if (source.pos.x >= room->shape.getPosition().x + room->shape.getSize().x)
-		{
-			source.direction = 2;
-		}
-		else if (source.pos.x <= room->shape.getPosition().x)
-		{
-			source.direction = 3;
-		}
-		else if (source.pos.y <= room->shape.getPosition().y)
-		{
-			source.direction = 1;
-		}
-		else
-		{
-			source.direction = 0;
-		}
-
-		sources.push_back(source);
+		
 	}
-
-	//generate rays from the doorway
-	int iterations = 200;
 }
