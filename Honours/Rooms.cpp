@@ -148,7 +148,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 		{
 			shape.setPosition(sf::Vector2f(origin.x, origin.y));
 			shape.setSize(sf::Vector2f(roomTileSize, target.y - origin.y));
-			shape.setFillColor(sf::Color::Red);
+			shape.setFillColor(sf::Color::Green);
 
 			temp.pos = origin;
 			temp.dir = Direction::Up;
@@ -163,7 +163,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 		{
 			shape.setPosition(sf::Vector2f(origin.x, target.y));
 			shape.setSize(sf::Vector2f(roomTileSize, origin.y - target.y));
-			shape.setFillColor(sf::Color::Red);
+			shape.setFillColor(sf::Color::Green);
 
 			temp.pos = origin;
 			temp.dir = Direction::Down;
@@ -183,7 +183,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 		{
 			shape.setPosition(sf::Vector2f(origin.x, origin.y));
 			shape.setSize(sf::Vector2f(target.x - origin.x, roomTileSize));
-			shape.setFillColor(sf::Color::Red);
+			shape.setFillColor(sf::Color::Green);
 
 			temp.pos = origin;
 			temp.dir = Direction::Left;
@@ -198,7 +198,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 		{
 			shape.setPosition(sf::Vector2f(target.x, origin.y));
 			shape.setSize(sf::Vector2f(origin.x - target.x, roomTileSize));
-			shape.setFillColor(sf::Color::Red);
+			shape.setFillColor(sf::Color::Green);
 
 			temp.pos = origin;
 			temp.dir = Direction::Right;

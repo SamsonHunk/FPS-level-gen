@@ -139,7 +139,8 @@ int main()
 
 
 		window.clear();
-		for (int it = rooms.size() - 1; it > -1; it--)
+		//for (int it = rooms.size() - 1; it > -1; it--)
+		for (int it = 0; it < rooms.size(); it++)
 		{//draw all the room graphics
 			window.draw(rooms[it].shape);
 		}
@@ -500,7 +501,7 @@ void generateHeat(Room* room)
 		{//rules for particle generation
 			if (area[index(pos)].tile != Wall)
 			{
-				newParticle.heat = parentParticle.heat * 0.995f;
+				newParticle.heat = parentParticle.heat;
 				newParticle.pos = pos;
 				//check there is not another particle already there in the same place
 				bool isUnique = true;
