@@ -154,7 +154,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 			temp.dir = Direction::Up;
 			room0->connections.push_back(temp);
 
-			temp.pos = sf::Vector2f(origin.x, target.y);
+			temp.pos = sf::Vector2f(origin.x, room1->shape.getPosition().y);
 			temp.dir = Direction::Down;
 			room1->connections.push_back(temp);
 			return true;
@@ -169,7 +169,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 			temp.dir = Direction::Down;
 			room0->connections.push_back(temp);
 
-			temp.pos = shape.getPosition();
+			temp.pos = sf::Vector2f(origin.x, room1->shape.getPosition().y + room1->shape.getSize().y);
 			temp.dir = Direction::Up;
 			room1->connections.push_back(temp);
 			return true;
@@ -189,7 +189,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 			temp.dir = Direction::Left;
 			room0->connections.push_back(temp);
 
-			temp.pos = sf::Vector2f(target.x, origin.y);
+			temp.pos = sf::Vector2f(room1->shape.getPosition().x, origin.y);
 			temp.dir = Direction::Right;
 			room1->connections.push_back(temp);
 			return true;
@@ -204,7 +204,7 @@ bool Corridor::generate(Room * room0, Room * room1)
 			temp.dir = Direction::Right;
 			room0->connections.push_back(temp);
 
-			temp.pos = shape.getPosition();
+			temp.pos = sf::Vector2f(room1->shape.getPosition().x + room1->shape.getSize().x, origin.y);
 			temp.dir = Direction::Left;
 			room1->connections.push_back(temp);
 			return true;

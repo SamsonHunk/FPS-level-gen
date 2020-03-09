@@ -86,8 +86,15 @@ int main()
 		for (int x = 0; x < size; x++)
 		{
 			float heat = area[index(x, y)].heat;
-			heatcolor.r = (int)(heat * 255.f);
-			heatMap.setPixel(x, y, heatcolor);
+			if (heat >= 6969.f)
+			{
+				heatMap.setPixel(x, y, sf::Color::Magenta);
+			}
+			else
+			{
+				heatcolor.r = (int)(heat * 255.f);
+				heatMap.setPixel(x, y, heatcolor);
+			}
 		}
 	}
 	heatMap.createMaskFromColor(sf::Color::Black);
@@ -139,8 +146,8 @@ int main()
 
 
 		window.clear();
-		//for (int it = rooms.size() - 1; it > -1; it--)
-		for (int it = 0; it < rooms.size(); it++)
+		for (int it = rooms.size() - 1; it > -1; it--)
+		//for (int it = 0; it < rooms.size(); it++)
 		{//draw all the room graphics
 			window.draw(rooms[it].shape);
 		}
@@ -394,7 +401,7 @@ void generate()
 	}
 
 	//figure out a heat map of the map and place cover in areas to reduce that heat
-	for (int it = 0; it < rooms.size(); it++)
+	for (int it = 0; it < 1; it++)
 	{
 		if (rooms[it].type != Room::CorridorType)
 		{// dont put cover in the corridors, only in the open areas
@@ -463,6 +470,7 @@ void generateHeat(Room* room)
 		Room::Direction dir;
 		float heat;
 		bool isNew;
+		bool isSource;
 	};
 
 	std::vector<particle> particles;
@@ -493,6 +501,7 @@ void generateHeat(Room* room)
 		newParticle.dir = source->dir;
 		newParticle.heat = 0.5f;
 		newParticle.isNew = true;
+		newParticle.isSource = true;
 
 		sf::Vector2i nextPos;
 
@@ -522,6 +531,8 @@ void generateHeat(Room* room)
 		};
 
 		particles.push_back(newParticle);
+
+		newParticle.isSource = false;
 
 		for (int distance = 0; distance < travelDistance; distance++)
 		{
@@ -597,7 +608,14 @@ void generateHeat(Room* room)
 		//now record the particles to the data structure
 		for (int count = 0; count < particles.size(); count++) 
 		{
-			area[index(particles[count].pos)].heat += particles[count].heat;
+			if (particles[count].isSource)
+			{
+				area[index(particles[count].pos)].heat = 6969.f;
+			}
+			else if (area[index(particles[count].pos)].heat != 6969.f)
+			{
+				area[index(particles[count].pos)].heat += particles[count].heat;
+			}
 		}
 	}
 }
