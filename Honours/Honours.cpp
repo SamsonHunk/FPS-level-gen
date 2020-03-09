@@ -363,6 +363,7 @@ void generate()
 	AreaPixel emptyPixel;
 	emptyPixel.heat = 0;
 	emptyPixel.tile = Empty;
+	emptyPixel.roomType = Room::RoomType::Empty;
 
 	for (int it = 0; it < area.capacity(); it++)
 	{
@@ -370,13 +371,13 @@ void generate()
 	}
 
 	std::cout << "Generating walls" << std::endl;
-
+	
 	//first create bare floor of each room
-	for (int it = rooms.size() - 1; it > 0; it--)
+	for (int it = 0; it < rooms.size(); it++)
 	{
 		drawRoom(rooms[it].shape.getPosition(), rooms[it].shape.getSize(), rooms[it].type);
 	}
-
+	
 	//run edge detection and colour the edges in as walls
 	for (int y = 0; y < size; y++)
 	{
@@ -399,7 +400,7 @@ void generate()
 			}
 		}
 	}
-
+	
 	//figure out a heat map of the map and place cover in areas to reduce that heat
 	for (int it = 0; it < 1; it++)
 	{
@@ -550,7 +551,7 @@ void generateHeat(Room* room)
 					{
 					case Room::Up:
 						nextPos = particles[particle].pos;
-						nextPos.y -= 1;
+						nextPos.y += 1;
 						generateParticle(nextPos, particles[particle]);
 
 						nextPos = particles[particle].pos;
@@ -563,7 +564,7 @@ void generateHeat(Room* room)
 						break;
 					case Room::Left:
 						nextPos = particles[particle].pos;
-						nextPos.x -= 1;
+						nextPos.x += 1;
 						generateParticle(nextPos, particles[particle]);
 
 						nextPos = particles[particle].pos;
@@ -576,7 +577,7 @@ void generateHeat(Room* room)
 						break;
 					case Room::Right:
 						nextPos = particles[particle].pos;
-						nextPos.x += 1;
+						nextPos.x -= 1;
 						generateParticle(nextPos, particles[particle]);
 
 						nextPos = particles[particle].pos;
