@@ -79,7 +79,7 @@ int main()
 	sf::Color heatcolor = sf::Color::Red;
 
 	//generate the heatmap image from the data structure
-	heatMap.create(size, size, sf::Color::Black);
+	heatMap.create(size, size, sf::Color::Transparent);
 
 	for (int y = 0; y < size; y++)
 	{
@@ -92,7 +92,7 @@ int main()
 			}
 			else
 			{
-				heatcolor.r = (int)(heat * 255.f);
+				heatcolor.r = (int)(heat * 25.f);
 				heatMap.setPixel(x, y, heatcolor);
 			}
 		}
@@ -534,7 +534,7 @@ void generateHeat(Room* room)
 		particles.push_back(newParticle);
 
 		newParticle.isSource = false;
-
+		
 		for (int distance = 0; distance < travelDistance; distance++)
 		{
 			int currentParticleCount = particles.size();
@@ -549,62 +549,63 @@ void generateHeat(Room* room)
 					//try and generate 3 new particles in a triangle pointing in the particle's direction
 					switch (particles[particle].dir)
 					{
+						
 					case Room::Up:
 						nextPos = particles[particle].pos;
-						nextPos.y += 1;
+						nextPos.y -= 1;
 						generateParticle(nextPos, particles[particle]);
 
-						nextPos = particles[particle].pos;
 						nextPos.x -= 1;
 						generateParticle(nextPos, particles[particle]);
 
-						nextPos = particles[particle].pos;
-						nextPos.x += 1;
+						nextPos.x += 2;
 						generateParticle(nextPos, particles[particle]);
 						break;
+						
 					case Room::Left:
 						nextPos = particles[particle].pos;
-						nextPos.x += 1;
-						generateParticle(nextPos, particles[particle]);
-
-						nextPos = particles[particle].pos;
-						nextPos.y -= 1;
-						generateParticle(nextPos, particles[particle]);
-
-						nextPos = particles[particle].pos;
-						nextPos.y -= 1;
-						generateParticle(nextPos, particles[particle]);
-						break;
-					case Room::Right:
-						nextPos = particles[particle].pos;
 						nextPos.x -= 1;
 						generateParticle(nextPos, particles[particle]);
 
-						nextPos = particles[particle].pos;
 						nextPos.y -= 1;
 						generateParticle(nextPos, particles[particle]);
 
-						nextPos = particles[particle].pos;
-						nextPos.y -= 1;
+						nextPos.y += 2;
 						generateParticle(nextPos, particles[particle]);
 						break;
+						
+						
+					case Room::Right:
+						nextPos = particles[particle].pos;
+						nextPos.x += 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos.y -= 1;
+						generateParticle(nextPos, particles[particle]);
+
+						nextPos.y += 2;
+						generateParticle(nextPos, particles[particle]);
+						break;
+						
 					case Room::Down:
 						nextPos = particles[particle].pos;
 						nextPos.y += 1;
 						generateParticle(nextPos, particles[particle]);
 
-						nextPos = particles[particle].pos;
 						nextPos.x -= 1;
 						generateParticle(nextPos, particles[particle]);
 
-						nextPos = particles[particle].pos;
-						nextPos.x += 1;
+						nextPos.x += 2;
 						generateParticle(nextPos, particles[particle]);
+						break;
+						
+					default:
 						break;
 					}
 				}
 			}
 		}
+		
 
 		//now record the particles to the data structure
 		for (int count = 0; count < particles.size(); count++) 
