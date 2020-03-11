@@ -32,6 +32,12 @@ struct AreaPixel
 //storage for data representation of generated level
 std::vector<AreaPixel> area;
 
+//heat map image
+sf::Image heatMap;
+
+//heat map texture
+sf::Texture heatTexture;
+
 int roomTileSize = 5; //minumum size of a room measurement
 int maxHeirarchy = 6; //generation variable to control how many rooms to make
 
@@ -74,33 +80,6 @@ int main()
 
 	//generate the level
 	generate();
-
-	sf::Image heatMap;
-	sf::Color heatcolor = sf::Color::Red;
-
-	//generate the heatmap image from the data structure
-	heatMap.create(size, size, sf::Color::Transparent);
-
-	for (int y = 0; y < size; y++)
-	{
-		for (int x = 0; x < size; x++)
-		{
-			float heat = area[index(x, y)].heat;
-			if (heat >= 6969.f)
-			{
-				heatMap.setPixel(x, y, sf::Color::Magenta);
-			}
-			else
-			{
-				heatcolor.r = (int)(heat * 25.f);
-				heatMap.setPixel(x, y, heatcolor);
-			}
-		}
-	}
-	heatMap.createMaskFromColor(sf::Color::Black);
-
-	sf::Texture heatTexture;
-	heatTexture.loadFromImage(heatMap);
 	sf::Sprite heatSprite;
 	heatSprite.setTexture(heatTexture);
 
@@ -402,7 +381,7 @@ void generate()
 	}
 	
 	//figure out a heat map of the map and place cover in areas to reduce that heat
-	for (int it = 0; it < 1; it++)
+	for (int it = 0; it < rooms.size(); it++)
 	{
 		if (rooms[it].type != Room::CorridorType)
 		{// dont put cover in the corridors, only in the open areas
@@ -411,6 +390,35 @@ void generate()
 			generateHeat(&rooms[it]);
 		}
 	}
+
+	std::cout << "Rendering heatmap" << std::endl;
+
+	//generate the heatmap image from the data structure
+	heatMap.create(size, size, sf::Color::Black);
+	sf::Color heatcolor = sf::Color::Red;
+
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 0; x < size; x++)
+		{
+			float heat = area[index(x, y)].heat;
+			if (heat >= 6969.f)
+			{
+				heatMap.setPixel(x, y, sf::Color::Magenta);
+			}
+			else
+			{
+				heatcolor.r = (int)(heat * 25.f) + heatMap.getPixel(x, y).r;
+				heatMap.setPixel(x, y, heatcolor);
+			}
+		}
+	}
+	heatMap.createMaskFromColor(sf::Color::Black);
+
+	//load the generated map into a texture
+	heatTexture.loadFromImage(heatMap);
+
+	std::cout << "Done!" << std::endl;
 }
 
 void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type)
