@@ -11,6 +11,9 @@ using namespace rapidjson;
 //grid dimensions
 int size;
 
+//max players in the map
+int maxPlayers = 8;
+
 std::string fileName = "test";
 
 enum TileType
@@ -18,7 +21,8 @@ enum TileType
 	Empty,
 	Floor,
 	Wall,
-	Cover
+	Cover,
+	Spawn
 };
 
 //Data for each pixel of the map
@@ -58,20 +62,25 @@ int index(sf::Vector2i xy)
 //function encompassing the level generation
 void generate();
 
+//function to generate a heatmap for a room
+void generateHeat(Room* room);
+
 //function to insert a new room into the structure
 void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type);
 
 //generate and parse a new level file of the currently displayed level
 void outputFile();
 
-//create a heat map for a certain room
-void generateHeat(Room* room);
-
 int main()
 {
+	bool showHeatMap = false;
+
 	//determine how big the map is going to be
 	std::cout << "How large is the map area? 100x100 min" << std::endl;
 	std::cin >> size;
+
+	std::cout << "How many players will the map support?" << std::endl;
+	std::cin >> maxPlayers;
 
 	srand(time(NULL));
 
@@ -80,6 +89,7 @@ int main()
 
 	//generate the level
 	generate();
+
 	sf::Sprite heatSprite;
 	heatSprite.setTexture(heatTexture);
 
@@ -121,16 +131,24 @@ int main()
 				std::cin >> fileName;
 				outputFile();
 			}
+
+			if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::H)
+			{//press h to show the heatmap overlay
+				showHeatMap = !showHeatMap;
+			}
 		}
 
 
 		window.clear();
 		for (int it = rooms.size() - 1; it > -1; it--)
-		//for (int it = 0; it < rooms.size(); it++)
+			//for (int it = 0; it < rooms.size(); it++)
 		{//draw all the room graphics
 			window.draw(rooms[it].shape);
 		}
-		window.draw(heatSprite);
+		if (showHeatMap)
+		{
+			window.draw(heatSprite);
+		}
 		window.display();
 
 		//display the heatmap
@@ -150,11 +168,12 @@ void generate()
 
 	int center = (size / 2);
 
-
+	int roomCount = 0;
 
 	Base base;
 	//generate the initial room, no other room in the map can be bigger than this room
 	base.generate(sf::Vector2f(center, center), size);
+	base.arrayIndex = 0;
 
 	int generationHeriarchy = base.heirarchy; //current position in the generation loop
 
@@ -247,6 +266,8 @@ void generate()
 					//if the shape does not overlap another shape then we can finalise it as a valid room
 					if (!intersectFlag)
 					{
+						roomCount++;
+						temp.arrayIndex = roomCount;
 						rooms.push_back(temp);
 						switch (dir)
 						{
@@ -292,6 +313,8 @@ void generate()
 			Corridor tempCorridor;
 			if (tempCorridor.generate(&rooms[roomIndex], &rooms[rooms[roomIndex].parentIndex]))
 			{
+				roomCount++;
+				tempCorridor.arrayIndex = roomCount;
 				rooms.push_back(tempCorridor);
 			}
 		}
@@ -316,6 +339,8 @@ void generate()
 					//if there is no other intersection then we can create the corridor
 					if (!intersectFlag)
 					{
+						roomCount++;
+						tempCorridor.arrayIndex = roomCount;
 						rooms.push_back(tempCorridor);
 					}
 				}
@@ -350,13 +375,13 @@ void generate()
 	}
 
 	std::cout << "Generating walls" << std::endl;
-	
+
 	//first create bare floor of each room
 	for (int it = 0; it < rooms.size(); it++)
 	{
 		drawRoom(rooms[it].shape.getPosition(), rooms[it].shape.getSize(), rooms[it].type);
 	}
-	
+
 	//run edge detection and colour the edges in as walls
 	for (int y = 0; y < size; y++)
 	{
@@ -379,15 +404,112 @@ void generate()
 			}
 		}
 	}
-	
+
 	//figure out a heat map of the map and place cover in areas to reduce that heat
 	for (int it = 0; it < rooms.size(); it++)
 	{
 		if (rooms[it].type != Room::CorridorType)
 		{// dont put cover in the corridors, only in the open areas
-			std::cout << "Generating heatmap for room " << std::to_string(it) << std::endl;
-
+			std::cout << "Genertating heat for room " + std::to_string(it) << std::endl;
 			generateHeat(&rooms[it]);
+		}
+	}
+
+	//Now we look over the map and assign room patterns to each room to be used for spawning cover and spawn points
+
+	//determine the two rooms that are furthest away from each other, the rooms can't be corridors or the central room
+	int a, b;
+	float highestDistance = 0.f;
+
+	for (int roomA = 0; roomA < rooms.size(); roomA++)
+	{
+		if (rooms[roomA].type == Room::NormalType)
+		{
+			for (int roomB = 0; roomB < rooms.size(); roomB++)
+			{
+				if (rooms[roomB].type == Room::NormalType)
+				{
+					//for each room, check the distance between each other room, recording the highest distance we find
+
+					//get the center of each point to compare to
+					sf::Vector2f posA, posB, dir;
+					posA = rooms[roomA].shape.getPosition();
+					posA.x += (rooms[roomA].shape.getSize().x / 2.f);
+					posA.y += rooms[roomA].shape.getSize().y / 2.f;
+
+					posB = rooms[roomB].shape.getPosition();
+					posB.x += rooms[roomB].shape.getSize().x / 2.f;
+					posB.y += rooms[roomA].shape.getSize().y / 2.f;
+
+					dir.x = posB.x - posA.x;
+					dir.y = posB.y - posA.y;
+
+					float dist = sqrt(dir.x * dir.x + dir.y * dir.y);
+
+					if (dist > highestDistance)
+					{
+						a = roomA;
+						b = roomB;
+						highestDistance = dist;
+					}
+				}
+			}
+		}
+	}
+
+	//now we have the two furthest rooms apart, make them the team objective rooms
+	rooms[a].pattern = Room::RoomPattern::Objective;
+	rooms[b].pattern = Room::RoomPattern::Objective;
+
+	rooms[a].shape.setFillColor(sf::Color::Red);
+	rooms[b].shape.setFillColor(sf::Color::Blue);
+
+	//the base should always be an arena as it is in the middle
+	rooms[0].pattern = Room::RoomPattern::Arena;
+
+	//now figure out what kind of room each of the other rooms are depending on the distance between them, the spawns and the middle
+
+	//each objective room needs a chokepoint connected to them
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		if (rooms[it].pattern == Room::RoomPattern::Null && rooms[it].type != Room::RoomType::CorridorType)
+		{//check if the room connects to either team base
+			for (int conIt = 0; conIt < rooms[it].connections.size(); conIt++)
+			{
+				if (rooms[it].connections[conIt].roomIndex == a || rooms[it].connections[conIt].roomIndex == b)
+				{
+					rooms[it].pattern = Room::RoomPattern::ChokePoint;
+					rooms[it].shape.setFillColor(sf::Color::Magenta);
+					break;
+				}
+			}
+		}
+	}
+
+	//everything else is a flank
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		if (rooms[it].type != Room::RoomType::CorridorType && rooms[it].pattern == Room::RoomPattern::Null)
+		{
+			rooms[it].pattern = Room::RoomPattern::Flank;
+		}
+	}
+
+	
+
+	//each room that is connected to the center and not a chokepoint is an arena
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		if (rooms[it].pattern == Room::RoomPattern::Null && rooms[it].type != Room::RoomType::CorridorType)
+		{
+			for (int conIt = 0; conIt < rooms[it].connections.size(); conIt++)
+			{
+				if (rooms[it].connections[conIt].roomIndex == 0)
+				{
+					rooms[it].pattern = Room::RoomPattern::Arena;
+					rooms[it].shape.setFillColor(sf::Color::Yellow);
+				}
+			}
 		}
 	}
 
@@ -506,7 +628,7 @@ void generateHeat(Room* room)
 
 		//generate the initial particle
 		particle newParticle;
-		newParticle.pos = sf::Vector2i(source->pos.x , source->pos.y);
+		newParticle.pos = sf::Vector2i(source->pos.x, source->pos.y);
 		newParticle.dir = source->dir;
 		newParticle.heat = 0.5f;
 		newParticle.isNew = true;
@@ -542,7 +664,7 @@ void generateHeat(Room* room)
 		particles.push_back(newParticle);
 
 		newParticle.isSource = false;
-		
+
 		for (int distance = 0; distance < travelDistance; distance++)
 		{
 			int currentParticleCount = particles.size();
@@ -557,7 +679,7 @@ void generateHeat(Room* room)
 					//try and generate 3 new particles in a triangle pointing in the particle's direction
 					switch (particles[particle].dir)
 					{
-						
+
 					case Room::Up:
 						nextPos = particles[particle].pos;
 						nextPos.y -= 1;
@@ -569,7 +691,7 @@ void generateHeat(Room* room)
 						nextPos.x += 2;
 						generateParticle(nextPos, particles[particle]);
 						break;
-						
+
 					case Room::Left:
 						nextPos = particles[particle].pos;
 						nextPos.x -= 1;
@@ -581,8 +703,8 @@ void generateHeat(Room* room)
 						nextPos.y += 2;
 						generateParticle(nextPos, particles[particle]);
 						break;
-						
-						
+
+
 					case Room::Right:
 						nextPos = particles[particle].pos;
 						nextPos.x += 1;
@@ -594,7 +716,7 @@ void generateHeat(Room* room)
 						nextPos.y += 2;
 						generateParticle(nextPos, particles[particle]);
 						break;
-						
+
 					case Room::Down:
 						nextPos = particles[particle].pos;
 						nextPos.y += 1;
@@ -606,17 +728,17 @@ void generateHeat(Room* room)
 						nextPos.x += 2;
 						generateParticle(nextPos, particles[particle]);
 						break;
-						
+
 					default:
 						break;
 					}
 				}
 			}
 		}
-		
+
 
 		//now record the particles to the data structure
-		for (int count = 0; count < particles.size(); count++) 
+		for (int count = 0; count < particles.size(); count++)
 		{
 			if (particles[count].isSource)
 			{

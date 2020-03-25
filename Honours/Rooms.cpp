@@ -152,10 +152,12 @@ bool Corridor::generate(Room * room0, Room * room1)
 
 			temp.pos = origin;
 			temp.dir = Direction::Up;
+			temp.roomIndex = room1->arrayIndex;
 			room0->connections.push_back(temp);
 
 			temp.pos = sf::Vector2f(origin.x, room1->shape.getPosition().y);
 			temp.dir = Direction::Down;
+			temp.roomIndex = room0->arrayIndex;
 			room1->connections.push_back(temp);
 			return true;
 		}
@@ -167,10 +169,12 @@ bool Corridor::generate(Room * room0, Room * room1)
 
 			temp.pos = origin;
 			temp.dir = Direction::Down;
+			temp.roomIndex = room1->arrayIndex;
 			room0->connections.push_back(temp);
 
 			temp.pos = sf::Vector2f(origin.x, room1->shape.getPosition().y + room1->shape.getSize().y);
 			temp.dir = Direction::Up;
+			temp.roomIndex = room0->arrayIndex;
 			room1->connections.push_back(temp);
 			return true;
 		}
@@ -187,10 +191,12 @@ bool Corridor::generate(Room * room0, Room * room1)
 
 			temp.pos = origin;
 			temp.dir = Direction::Left;
+			temp.roomIndex = room1->arrayIndex;
 			room0->connections.push_back(temp);
 
 			temp.pos = sf::Vector2f(room1->shape.getPosition().x, origin.y);
 			temp.dir = Direction::Right;
+			temp.roomIndex = room0->arrayIndex;
 			room1->connections.push_back(temp);
 			return true;
 		}
@@ -202,10 +208,12 @@ bool Corridor::generate(Room * room0, Room * room1)
 
 			temp.pos = origin;
 			temp.dir = Direction::Right;
+			temp.roomIndex = room1->arrayIndex;
 			room0->connections.push_back(temp);
 
 			temp.pos = sf::Vector2f(room1->shape.getPosition().x + room1->shape.getSize().x, origin.y);
 			temp.dir = Direction::Left;
+			temp.roomIndex = room0->arrayIndex;
 			room1->connections.push_back(temp);
 			return true;
 		}

@@ -23,19 +23,31 @@ public:
 		Right
 	};
 
+	enum RoomPattern
+	{
+		Null,
+		Arena,
+		Flank,
+		ChokePoint,
+		Objective
+	};
+
 	struct Connection
 	{
 		sf::Vector2f pos;
 		Direction dir;
+		int roomIndex;
 	};
 
 	//shared variables between all room types
 	RoomType type;
+	RoomPattern pattern = Null;
 
 	sf::RectangleShape shape;
 
 	int heirarchy;
 	int parentIndex = -1;
+	int arrayIndex;
 
 	int sizeConstraint;
 
