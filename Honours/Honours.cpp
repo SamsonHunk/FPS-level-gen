@@ -48,6 +48,9 @@ int maxHeirarchy = 6; //generation variable to control how many rooms to make
 //sfml rectangles to visualise the created level
 std::vector<Room> rooms;
 
+//sfml circles to visualise the spawn points
+std::vector<sf::CircleShape> spawns;
+
 //small function to ease accessing and organising data in the vector
 int index(int x, int y)
 {
@@ -148,6 +151,10 @@ int main()
 		if (showHeatMap)
 		{
 			window.draw(heatSprite);
+		}
+		for (int it = 0; it < spawns.size(); it++)
+		{
+			window.draw(spawns[it]);
 		}
 		window.display();
 
@@ -486,16 +493,6 @@ void generate()
 		}
 	}
 
-	//everything else is a flank
-	for (int it = 0; it < rooms.size(); it++)
-	{
-		if (rooms[it].type != Room::RoomType::CorridorType && rooms[it].pattern == Room::RoomPattern::Null)
-		{
-			rooms[it].pattern = Room::RoomPattern::Flank;
-		}
-	}
-
-	
 
 	//each room that is connected to the center and not a chokepoint is an arena
 	for (int it = 0; it < rooms.size(); it++)
@@ -508,6 +505,140 @@ void generate()
 				{
 					rooms[it].pattern = Room::RoomPattern::Arena;
 					rooms[it].shape.setFillColor(sf::Color::Yellow);
+				}
+			}
+		}
+	}
+
+	//everything else is a flank
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		if (rooms[it].type != Room::RoomType::CorridorType && rooms[it].pattern == Room::RoomPattern::Null)
+		{
+			rooms[it].pattern = Room::RoomPattern::Flank;
+		}
+	}
+
+	int totalSpawnCount = 0;
+
+	//now create an amount of spawn points in each room depending on what kind of room it is
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		int spawnCount = 0;
+		if (rooms[it].type != Room::RoomType::CorridorType)
+		{
+			std::cout << "Generating spawns for room " + std::to_string(it);
+			std::cout << std::endl;
+
+			switch (rooms[it].pattern)
+			{
+			case Room::RoomPattern::Arena:
+				spawnCount = 4;
+				break;
+			case Room::RoomPattern::ChokePoint:
+				spawnCount = (rand() % 2) + 2;
+				break;
+			case Room::RoomPattern::Flank:
+				spawnCount = rand() % 2;
+				break;
+			default:
+				break;
+			}
+
+
+			if (spawnCount > 0)
+			{
+				//figure out the min and max and median heat values of the room
+				float maxHeat = 0;
+				float minHeat = 99999;
+				float medHeat, size;
+				size = 0;
+				medHeat = 0;
+
+				sf::Vector2f roomPos;
+
+				roomPos = rooms[it].shape.getPosition();
+
+				for (int y = 0; y < rooms[it].shape.getSize().y; y++)
+				{
+					for (int x = 0; x < rooms[it].shape.getSize().x; x++)
+					{
+						float heat = area[index(x + roomPos.x, y + roomPos.y)].heat;
+
+						if (heat < minHeat)
+						{
+							minHeat = heat;
+						}
+						else if (heat > maxHeat)
+						{
+							maxHeat = heat;
+						}
+
+						size++;
+
+						medHeat += heat;
+					}
+				}
+
+				medHeat = medHeat / size;
+
+				std::vector<sf::CircleShape> generatedSpawns;
+
+				//place the spawn points in the room with the lowest amount of heat possible, ramping up the allowed heat limit the more spawn points we place
+				for (int spawnIt = 0; spawnIt < spawnCount; spawnIt++)
+				{
+					float heat = 0;
+					float heatLimit = minHeat;
+					int iterations = 0;
+					bool distanceFlag;
+					sf::Vector2i spawnPos;
+					do
+					{
+						distanceFlag = true;
+						spawnPos.x = roomTileSize + (rand() % (int)rooms[it].shape.getSize().x - roomTileSize);
+						spawnPos.y = roomTileSize + (rand() % (int)rooms[it].shape.getSize().y - roomTileSize);
+
+						heat = area[index(spawnPos)].heat;
+
+						//check that the selected position is not too close to another spawn
+						for (int checkIt = 0; checkIt < generatedSpawns.size(); checkIt++)
+						{
+							//figure out the magnitude of the distance between the generated point and each existing point
+							float dist = sqrt(std::pow(generatedSpawns[checkIt].getPosition().x - spawnPos.x, 2) + std::pow(generatedSpawns[checkIt].getPosition().y - spawnPos.y, 2));
+							if (dist < 1.5f)
+							{
+								//the spawn is too close to another spawn
+								distanceFlag = false;
+								break;
+							}
+						}
+
+						iterations++;
+						if (iterations == 50)
+						{
+							iterations = 0;
+							heatLimit += .5f;
+							if (heatLimit >= maxHeat)
+							{
+								break;
+							}
+						}
+					} while (heat > heatLimit || distanceFlag);
+
+					sf::CircleShape newSpawn;
+					newSpawn.setFillColor(sf::Color::Cyan);
+					newSpawn.setRadius(1.f);
+					newSpawn.setPosition(sf::Vector2f(spawnPos.x + roomPos.x, spawnPos.y + roomPos.y));
+					generatedSpawns.push_back(newSpawn);
+				}
+
+				if (generatedSpawns.size() > 0)
+				{
+					//once we have made all the spawns for the room, push them onto the main vector
+					for (int spawnIt = 0; spawnIt < generatedSpawns.size(); spawnIt++)
+					{
+						spawns.push_back(generatedSpawns[spawnIt]);
+					}
 				}
 			}
 		}
@@ -740,14 +871,7 @@ void generateHeat(Room* room)
 		//now record the particles to the data structure
 		for (int count = 0; count < particles.size(); count++)
 		{
-			if (particles[count].isSource)
-			{
-				area[index(particles[count].pos)].heat = 6969.f;
-			}
-			else if (area[index(particles[count].pos)].heat != 6969.f)
-			{
-				area[index(particles[count].pos)].heat += particles[count].heat;
-			}
+			area[index(particles[count].pos)].heat += particles[count].heat;
 		}
 	}
 }
