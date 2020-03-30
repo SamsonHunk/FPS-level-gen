@@ -545,100 +545,132 @@ void generate()
 				break;
 			}
 
-
+			//for each spawn needed to be generated
 			if (spawnCount > 0)
 			{
-				//figure out the min and max and median heat values of the room
-				float maxHeat = 0;
-				float minHeat = 99999;
-				float medHeat, size;
-				size = 0;
-				medHeat = 0;
-
-				sf::Vector2f roomPos;
-
-				roomPos = rooms[it].shape.getPosition();
-
-				for (int y = 0; y < rooms[it].shape.getSize().y; y++)
+				//create a profile of the heat in the room
+				struct RoomTile
 				{
-					for (int x = 0; x < rooms[it].shape.getSize().x; x++)
-					{
-						float heat = area[index(x + roomPos.x, y + roomPos.y)].heat;
+					float averageHeat = 0;
+					sf::Vector2i pos;
+					TileType type;
+				};
 
-						if (heat < minHeat)
-						{
-							minHeat = heat;
-						}
-						else if (heat > maxHeat)
-						{
-							maxHeat = heat;
-						}
-
-						size++;
-
-						medHeat += heat;
-					}
-				}
-
-				medHeat = medHeat / size;
-
+				std::vector<RoomTile> room;
 				std::vector<sf::CircleShape> generatedSpawns;
 
-				//place the spawn points in the room with the lowest amount of heat possible, ramping up the allowed heat limit the more spawn points we place
-				for (int spawnIt = 0; spawnIt < spawnCount; spawnIt++)
+				sf::Vector2f roomSize = rooms[it].shape.getSize();
+				sf::Vector2f roomPos = rooms[it].shape.getPosition();
+
+				float minRoomHeat = 99999999999999;
+				float maxRoomHeat = 0;
+				float averageRoomHeat = 0;
+
+				for (int y = 0; y < roomSize.y; y += roomTileSize)
 				{
-					float heat = 0;
-					float heatLimit = minHeat;
-					int iterations = 0;
-					bool distanceFlag;
-					sf::Vector2i spawnPos;
-					do
+					for (int x = 0; x < roomSize.x; x += roomTileSize)
 					{
-						distanceFlag = true;
-						spawnPos.x = roomTileSize + (rand() % (int)rooms[it].shape.getSize().x - roomTileSize);
-						spawnPos.y = roomTileSize + (rand() % (int)rooms[it].shape.getSize().y - roomTileSize);
+						RoomTile newTile;
+						newTile.pos.x = x + roomPos.x;
+						newTile.pos.y = y + roomPos.y;
+						newTile.type = area[index(newTile.pos)].tile;
 
-						heat = area[index(spawnPos)].heat;
-
-						//check that the selected position is not too close to another spawn
-						for (int checkIt = 0; checkIt < generatedSpawns.size(); checkIt++)
+						//get the average heat of the room tile
+						for (int tileY = 0; tileY < roomTileSize; tileY++)
 						{
-							//figure out the magnitude of the distance between the generated point and each existing point
-							float dist = sqrt(std::pow(generatedSpawns[checkIt].getPosition().x - spawnPos.x, 2) + std::pow(generatedSpawns[checkIt].getPosition().y - spawnPos.y, 2));
-							if (dist < 1.5f)
+							for (int tileX = 0; tileX < roomTileSize; tileX++)
 							{
-								//the spawn is too close to another spawn
-								distanceFlag = false;
-								break;
+								newTile.averageHeat += area[index(roomPos.x + x + tileX, roomPos.y + y + tileY)].heat;
 							}
 						}
 
-						iterations++;
-						if (iterations == 50)
-						{
-							iterations = 0;
-							heatLimit += .5f;
-							if (heatLimit >= maxHeat)
-							{
-								break;
-							}
-						}
-					} while (heat > heatLimit || distanceFlag);
+						newTile.averageHeat /= roomTileSize * roomTileSize;
 
-					sf::CircleShape newSpawn;
-					newSpawn.setFillColor(sf::Color::Cyan);
-					newSpawn.setRadius(1.f);
-					newSpawn.setPosition(sf::Vector2f(spawnPos.x + roomPos.x, spawnPos.y + roomPos.y));
-					generatedSpawns.push_back(newSpawn);
+						room.push_back(newTile);
+
+						//record entire room temperature data
+						if (newTile.averageHeat > maxRoomHeat)
+						{
+							maxRoomHeat = newTile.averageHeat;
+						}
+						else if (newTile.averageHeat < minRoomHeat)
+						{
+							minRoomHeat = newTile.averageHeat;
+						}
+
+						averageRoomHeat += newTile.averageHeat;
+					}
 				}
 
-				if (generatedSpawns.size() > 0)
+				averageRoomHeat /= room.size();
+
+
+				//now place spawn points in the room in the places with the lowest amount of relative heat
+				for (int spawnIt = 0; spawnIt < spawnCount; spawnIt++)
 				{
-					//once we have made all the spawns for the room, push them onto the main vector
-					for (int spawnIt = 0; spawnIt < generatedSpawns.size(); spawnIt++)
+					//point to a random tile in the room
+					int pointer = rand() % room.size();
+					int initialPos = pointer;
+
+					float targetHeat = minRoomHeat;
+					bool foundTile = false;
+
+					//check that the tile we are pointing to is a valid place to put a spawn point at
+					do
 					{
-						spawns.push_back(generatedSpawns[spawnIt]);
-					}
+						//we can't put a spawn point inside a wall or in space >.>
+						if (room[pointer].type != TileType::Wall && room[pointer].type != TileType::Empty)
+						{
+							//check the heat of the tile
+							if (room[pointer].averageHeat <= targetHeat)
+							{
+								sf::CircleShape newSpawn;
+								newSpawn.setPosition(sf::Vector2f(room[pointer].pos.x, room[pointer].pos.y));
+								newSpawn.setRadius(1.f);
+								newSpawn.setFillColor(sf::Color::Cyan);
+
+								foundTile = true;
+
+								//check the distance between the selected spawn and each other generated spawn
+								for (int i = 0; i < generatedSpawns.size(); i++)
+								{
+									sf::Vector2f checkPos = generatedSpawns[i].getPosition();
+									if (sqrt(std::pow(checkPos.x - newSpawn.getPosition().x, 2) + std::pow(checkPos.y - newSpawn.getPosition().y, 2)) < (roomTileSize * 2))
+									{
+										foundTile = false;
+										break;
+									}
+								}
+
+								//if we didn't find any spawn points too close then save the spawn
+								if (foundTile)
+								{
+									generatedSpawns.push_back(newSpawn);
+								}
+							}
+						}
+
+						if (!foundTile)
+						{
+							//if we have not found a good tile on this point then move the pointer up by one
+							pointer++;
+							if (pointer >= room.size())
+							{
+								pointer = 0;
+							}
+						}
+
+						//if we made a whole loop of the room increase the heat limit
+						if (pointer == initialPos)
+						{
+							targetHeat += .2f;
+						}
+					} while (targetHeat < (maxRoomHeat - .2f) && !foundTile);
+				}
+
+				for (int i = 0; i < generatedSpawns.size(); i++)
+				{
+					spawns.push_back(generatedSpawns[i]);
 				}
 			}
 		}
@@ -866,7 +898,6 @@ void generateHeat(Room* room)
 				}
 			}
 		}
-
 
 		//now record the particles to the data structure
 		for (int count = 0; count < particles.size(); count++)
