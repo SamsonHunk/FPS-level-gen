@@ -235,7 +235,7 @@ void generate()
 						point.y += rand() % (int)roomSize.y;
 						point.x += roomTileSize + roomSize.x;
 						break;
-					case 3: //bottom edge`
+					case 3: //bottom edge
 						point.x += rand() % (int)roomSize.x;
 						point.y += roomSize.y + roomTileSize;
 						break;
@@ -354,9 +354,7 @@ void generate()
 			}
 		}
 
-
 		roomIndex++;
-		//dont draw corridors onto corridors
 
 		if (roomIndex >= rooms.size())
 		{
@@ -417,7 +415,7 @@ void generate()
 	{
 		if (rooms[it].type != Room::CorridorType)
 		{// dont put cover in the corridors, only in the open areas
-			std::cout << "Genertating heat for room " + std::to_string(it) << std::endl;
+			std::cout << "Generating heat for room " + std::to_string(it) << std::endl;
 			generateHeat(&rooms[it]);
 		}
 	}
@@ -441,7 +439,7 @@ void generate()
 					//get the center of each point to compare to
 					sf::Vector2f posA, posB, dir;
 					posA = rooms[roomA].shape.getPosition();
-					posA.x += (rooms[roomA].shape.getSize().x / 2.f);
+					posA.x += rooms[roomA].shape.getSize().x / 2.f;
 					posA.y += rooms[roomA].shape.getSize().y / 2.f;
 
 					posB = rooms[roomB].shape.getPosition();
@@ -554,6 +552,7 @@ void generate()
 					float averageHeat = 0;
 					sf::Vector2i pos;
 					TileType type;
+					bool isSource = false;
 				};
 
 				std::vector<RoomTile> room;
@@ -565,6 +564,8 @@ void generate()
 				float minRoomHeat = 99999999999999;
 				float maxRoomHeat = 0;
 				float averageRoomHeat = 0;
+
+				int numOfSources = 0;
 
 				for (int y = 0; y < roomSize.y; y += roomTileSize)
 				{
@@ -581,6 +582,11 @@ void generate()
 							for (int tileX = 0; tileX < roomTileSize; tileX++)
 							{
 								newTile.averageHeat += area[index(roomPos.x + x + tileX, roomPos.y + y + tileY)].heat;
+								if (area[index(roomPos.x + x + tileX, roomPos.y + y + tileY)].heat >= 999999999.f)
+								{
+									newTile.isSource = true;
+									numOfSources++;
+								}
 							}
 						}
 
@@ -588,21 +594,25 @@ void generate()
 
 						room.push_back(newTile);
 
-						//record entire room temperature data
-						if (newTile.averageHeat > maxRoomHeat)
+						//don't let the high heat value from a heat source muddy the room averages
+						if (!newTile.isSource)
 						{
-							maxRoomHeat = newTile.averageHeat;
-						}
-						else if (newTile.averageHeat < minRoomHeat)
-						{
-							minRoomHeat = newTile.averageHeat;
-						}
+							//record entire room temperature data
+							if (newTile.averageHeat > maxRoomHeat)
+							{
+								maxRoomHeat = newTile.averageHeat;
+							}
+							else if (newTile.averageHeat < minRoomHeat)
+							{
+								minRoomHeat = newTile.averageHeat;
+							}
 
-						averageRoomHeat += newTile.averageHeat;
+							averageRoomHeat += newTile.averageHeat;
+						}
 					}
 				}
 
-				averageRoomHeat /= room.size();
+				averageRoomHeat /= (room.size() - numOfSources);
 
 
 				//now place spawn points in the room in the places with the lowest amount of relative heat
@@ -642,6 +652,23 @@ void generate()
 									}
 								}
 
+								//check that the selected tile is not too near a corridor entrance (heat source)
+								if (foundTile)
+								{
+									for (int i = 0; i < room.size(); i++)
+									{
+										if (room[i].isSource)
+										{
+											sf::Vector2i checkPos = room[i].pos;
+											if (sqrt(std::pow(checkPos.x - newSpawn.getPosition().x, 2) + std::pow(checkPos.y - newSpawn.getPosition().y, 2)) < (roomTileSize * 1.25f))
+											{
+												foundTile = false;
+												break;
+											}
+										}
+									}
+								}
+
 								//if we didn't find any spawn points too close then save the spawn
 								if (foundTile)
 								{
@@ -665,6 +692,7 @@ void generate()
 						{
 							targetHeat += .2f;
 						}
+
 					} while (targetHeat < (maxRoomHeat - .2f) && !foundTile);
 				}
 
@@ -709,17 +737,6 @@ void generate()
 void drawRoom(sf::Vector2f pos, sf::Vector2f size, Room::RoomType type)
 {
 	//save the room data into the final output
-
-	//figure out the index of the shapes top right corner
-	/*
-	____________
-	|
-	|
-	|
-	|
-	*/
-
-	//then we build a room as a rectangle of floor surrounded by wall
 	for (int y = 0; y < size.y; y++)
 	{
 		for (int x = 0; x < size.x; x++)
@@ -902,7 +919,14 @@ void generateHeat(Room* room)
 		//now record the particles to the data structure
 		for (int count = 0; count < particles.size(); count++)
 		{
-			area[index(particles[count].pos)].heat += particles[count].heat;
+			if (!particles[count].isSource)
+			{
+				area[index(particles[count].pos)].heat += particles[count].heat;
+			}
+			else
+			{
+				area[index(particles[count].pos)].heat += 999999999999.f;
+			}
 		}
 	}
 }
