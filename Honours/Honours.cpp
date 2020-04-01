@@ -123,6 +123,7 @@ int main()
 				}
 
 				rooms.clear();
+				spawns.clear();
 
 				//make a new one
 				generate();
@@ -770,6 +771,16 @@ void outputFile()
 	for (int it = 0; it < area.size(); it++)
 	{
 		writer.Int(area[it].tile);
+	}
+	writer.EndArray();
+	writer.Key("Spawns");
+	writer.StartArray();
+	for (int it = 0; it < spawns.size(); it++)
+	{
+		writer.StartArray();
+		writer.Double(spawns[it].getPosition().x);
+		writer.Double(spawns[it].getPosition().y);
+		writer.EndArray();
 	}
 	writer.EndArray();
 	writer.EndObject();
