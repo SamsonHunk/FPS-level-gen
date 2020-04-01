@@ -340,6 +340,10 @@ void generate()
 						if (collisionIt != it && collisionIt != roomIndex && rooms[collisionIt].shape.getGlobalBounds().intersects(tempCorridor.shape.getGlobalBounds()))
 						{
 							intersectFlag = true;
+							//if the corridor intersects with something then delete the corridor from both the target rooms
+							rooms[roomIndex].connections.pop_back();
+							rooms[it].connections.pop_back();
+							break;
 						}
 					}
 
