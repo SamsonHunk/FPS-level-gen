@@ -62,6 +62,11 @@ int index(sf::Vector2i xy)
 	return xy.x + size * xy.y;
 }
 
+float getDist(sf::Vector2f room0, sf::Vector2f room1)
+{
+	return sqrt(std::pow(room0.x - room1.x, 2) + std::pow(room0.y - room1.y, 2));
+}
+
 //function encompassing the level generation
 void generate();
 
@@ -369,6 +374,86 @@ void generate()
 
 	} while (rooms[roomIndex].type != Room::CorridorType);
 
+	//at the end check all the rooms and make sure they have at least two connections
+	for (int it = 0; it < rooms.size(); it++)
+	{
+		if (rooms[it].type != Room::RoomType::CorridorType && rooms[it].connections.size() < 3)
+		{
+			//create a lookup vector of valid rooms we can connect a corridor to
+			struct RoomLookup
+			{
+				int roomIndex;
+				float distance;
+			};
+
+			std::vector<RoomLookup> validRooms;
+
+			for (int roomIt = 0; roomIt < rooms.size(); roomIt++)
+			{
+				if (rooms[roomIt].type != Room::RoomType::CorridorType && it != roomIt)
+				{
+					RoomLookup newRoom;
+					newRoom.distance = getDist(rooms[it].shape.getPosition(), rooms[roomIt].shape.getPosition());
+					newRoom.roomIndex = roomIt;
+
+					validRooms.push_back(newRoom);
+				}
+			}
+
+			//with the lookup table try and attatch a corridor to the closest possible room
+			bool loopFlag = true;
+			float minDistance = 0;
+			float maxDistance = 9999999;
+			int currentRoomIndex = 0;
+			int trys = 0;
+
+			while (loopFlag && trys <= validRooms.size())
+			{
+				maxDistance = 99999999999999;
+
+				//figure out the next closest room
+				for (int roomIt = 0; roomIt < validRooms.size(); roomIt++)
+				{
+					if (validRooms[roomIt].distance < maxDistance && validRooms[roomIt].distance > minDistance)
+					{
+						currentRoomIndex = validRooms[roomIt].roomIndex;
+						maxDistance = validRooms[roomIt].distance;
+					}
+				}
+
+				//now try and connect a corridor to the room
+				Corridor tempCorridor;
+				bool intersectFlag = false;
+				if (tempCorridor.generate(&rooms[currentRoomIndex], &rooms[it]))
+				{
+					//check that the corridor doesn't intersect with other rooms
+					for (int collisionIt = 0; collisionIt < rooms.size(); collisionIt++)
+					{
+						if (collisionIt != it && collisionIt != currentRoomIndex && rooms[collisionIt].shape.getGlobalBounds().intersects(tempCorridor.shape.getGlobalBounds()))
+						{
+							intersectFlag = true;
+							//if the corridor intersects with something then delete the corridor from both the target rooms
+							rooms[currentRoomIndex].connections.pop_back();
+							rooms[it].connections.pop_back();
+							break;
+						}
+					}
+					//if there is no other intersection then we can create the corridor
+					if (!intersectFlag)
+					{
+						roomCount++;
+						tempCorridor.arrayIndex = roomCount;
+						rooms.push_back(tempCorridor);
+						loopFlag = false;
+					}
+				}
+
+				trys++;
+				minDistance = maxDistance;
+			}
+		}
+	}
+
 	//write the rooms into the data structure and generate the walls
 
 	//initialise the structure as empty
@@ -525,7 +610,7 @@ void generate()
 	int totalSpawnCount = 0;
 
 	//now create an amount of spawn points in each room depending on what kind of room it is
-	for (int it = 0; it < rooms.size(); it++)
+	for (int it = 1; it < rooms.size(); it++)
 	{
 		int spawnCount = 0;
 		if (rooms[it].type != Room::RoomType::CorridorType)
@@ -535,14 +620,17 @@ void generate()
 
 			switch (rooms[it].pattern)
 			{
+			case Room::RoomPattern::Objective:
+				spawnCount = maxPlayers / 2;
+				break;
 			case Room::RoomPattern::Arena:
-				spawnCount = 4;
+				spawnCount = maxPlayers / 3;
 				break;
 			case Room::RoomPattern::ChokePoint:
-				spawnCount = (rand() % 2) + 2;
+				spawnCount = maxPlayers / 2;
 				break;
 			case Room::RoomPattern::Flank:
-				spawnCount = rand() % 2;
+				spawnCount = 2;
 				break;
 			default:
 				break;
