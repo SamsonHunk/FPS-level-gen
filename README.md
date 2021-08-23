@@ -7,3 +7,7 @@ The closer the rooms are to the center the less spawn points and the bigger the 
 The algorithm outputs a json file of the level placement which can be parsed into another game to be generated into a playable level.
 
 One extra feature that the paper goes over is the placement of mid sized cover in the middle of the rooms. The spawn placement is determined through a heatmap generated of the level simulated what players can see when walking into a room. This heatmap would be reused for the placement of cover and weapon drops, I'll go back and add it in at some point.
+
+Uses SFML for displaying the level graphically and rapidjson for outputting the level files. The build output folders in x64/ have necessary .dll files the resultant .exe files need to run.
+
+Press h to toggle the heatmap overlay for the level output display.

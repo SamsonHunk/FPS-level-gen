@@ -21,7 +21,11 @@ mono_crash.*
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
-x64/
+x64/Debug/Honours.exe
+x64/Debug/Honours.ilk
+x64/Debug/Honours.pdb
+x64/Release/Honours.exe
+x64/Release/Honours.pdb
 x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
@@ -30,7 +34,6 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-SFML/
 Honours/output/*.json
 
 # Visual Studio 2015/2017 cache/options directory

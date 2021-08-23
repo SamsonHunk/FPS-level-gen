@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 #include <iostream>
@@ -66,6 +67,7 @@ float getDist(sf::Vector2f room0, sf::Vector2f room1)
 {
 	return sqrt(std::pow(room0.x - room1.x, 2) + std::pow(room0.y - room1.y, 2));
 }
+
 
 //function encompassing the level generation
 void generate();
